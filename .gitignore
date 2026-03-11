@@ -1,0 +1,16 @@
+# Dataset
+data/
+images/*.zip
+_kaggle_download/
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+
+# System files
+.DS_Store
+Thumbs.db
