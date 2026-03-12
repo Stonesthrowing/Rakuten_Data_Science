@@ -2,6 +2,7 @@
 data/
 images/*.zip
 _kaggle_download/
+images/
 
 # Python
 __pycache__/
