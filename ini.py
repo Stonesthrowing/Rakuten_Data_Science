@@ -1,6 +1,7 @@
 # %%
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 import re
 import nltk
 # nltk.download('stopwords')  # this could be neccessary
