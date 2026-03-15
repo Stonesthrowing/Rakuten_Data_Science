@@ -1,90 +1,80 @@
-# %%
+from pathlib import Path
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
 import re
 import nltk
-# nltk.download('stopwords')  # this could be neccessary
 from nltk.corpus import stopwords
-stop_words = set(stopwords.words(['french', 'english', 'german']))
 
-# removing repeating text blocks in description
+nltk.download('stopwords')
 
-def remove_repeated_blocks(text, min_block_len=100):
-    """
-    Remove consecutively repeated text blocks of length >= min_block_len.
-    Keeps the first occurrence only.
-    """
+
+stop_words = set().union(
+    stopwords.words("french"),
+    stopwords.words("english"),
+    stopwords.words("german")
+)
+
+def remove_repeated_blocks(text, min_block_len=100, max_text_len=2000):
     if not isinstance(text, str):
         return text
 
     text = text.strip()
+
     if len(text) < 2 * min_block_len:
         return text
 
-    # build regex safely
+    if len(text) > max_text_len:
+        return text
+
     pattern = re.compile(r"(.{" + str(min_block_len) + r",}?)(?:\1)+", re.DOTALL)
 
     previous = None
     while text != previous:
         previous = text
-
-        # collapse repeated consecutive blocks
         text = pattern.sub(r"\1", text)
-
-        # normalize spaces created during replacement
         text = re.sub(r"\s+", " ", text).strip()
 
     return text
 
-def clean_txt_colmn(dtfrme, column):    # function to clean columns in a dataframe and generate a new column_clean 
-    new = column + "_clean"    
-    # replacing NaNs with empty strings
-    dtfrme[new] = dtfrme[column].fillna("")    
-    # remove html tags
-    dtfrme[new] = dtfrme[new].str.replace(r"<.*?>", " ", regex=True)    
-    # decode html entities &amp
-    dtfrme[new] = dtfrme[new].str.replace(r"&\w+;", " ", regex=True)    
-    # lowercase
-    dtfrme[new] = dtfrme[new].str.lower()    
-    # remove punctuation and special characters (parantheses ...)
-    dtfrme[new] = dtfrme[new].str.replace(r"[^\w\s]", " ", regex=True)    
-    # normalize spaces
-    dtfrme[new] = dtfrme[new].str.replace(r"\s+", " ", regex=True)    
-    # strip
+def clean_txt_colmn(dtfrme, column):
+    new = column + "_clean"
+    dtfrme[new] = dtfrme[column].fillna("")
+    dtfrme[new] = dtfrme[new].str.replace(r"<.*?>", " ", regex=True)
+    dtfrme[new] = dtfrme[new].str.replace(r"&\w+;", " ", regex=True)
+    dtfrme[new] = dtfrme[new].str.lower()
+    dtfrme[new] = dtfrme[new].str.replace(r"[^\w\s]", " ", regex=True)
+    dtfrme[new] = dtfrme[new].str.replace(r"\s+", " ", regex=True)
     dtfrme[new] = dtfrme[new].str.strip()
     return dtfrme
 
-def prepare_all_words(df, column, stop_words): # function to prepare vocabularies
-
-    # tokenize
+def prepare_all_words(df, column, stop_words):
     tokens = df[column].str.split()
-
-    # flatten into single column of words
     words = tokens.explode()
-
-    # remove stopwords
     words = words[~words.isin(stop_words)]
-
-    # remove short tokens
     words = words[words.str.len() > 2]
-
     return words
 
+PROJECT_ROOT = Path.cwd()
+DATA_PATH = PROJECT_ROOT / "data"
 
-
-X_train = pd.read_csv("X_train_update.csv")
-Y_train = pd.read_csv("Y_train_CVw08PX.csv")
-X_test = pd.read_csv("X_test_update.csv")
+X_train = pd.read_csv(DATA_PATH / "X_train_update.csv").head(50)
+Y_train = pd.read_csv(DATA_PATH / "Y_train_CVw08PX.csv").head(50)
+X_test = pd.read_csv(DATA_PATH / "X_test_update.csv").head(50)
 
 df = pd.merge(X_train, Y_train, on="Unnamed: 0")
 
-clean_txt_colmn(df,"designation")
-clean_txt_colmn(df,"description")
+df = df.dropna()
+
+df = clean_txt_colmn(df, "designation")
+df = clean_txt_colmn(df, "description")
 
 design_words = prepare_all_words(df, "designation_clean", stop_words)
 descrp_words = prepare_all_words(df, "description_clean", stop_words)
 
-# remove reteated block of texts  only to descriptions
-df["description_dedup"] = df["description_clean"].apply(remove_repeated_blocks)
+df["description_dedup"] = df["description_clean"]
+mask = df["description_clean"].str.len().between(200, 2000)
+df.loc[mask, "description_dedup"] = df.loc[mask, "description_clean"].apply(remove_repeated_blocks)
 
+print("finished")
+print(df.head())
+print(df[["designation", "designation_clean"]].head())
+print(df.shape)
