@@ -46,9 +46,10 @@ def clean_txt_colmn(dtfrme, column):    # function to clean columns in a datafra
     # lowercase
     dtfrme[new] = dtfrme[new].str.lower()    
     # remove punctuation and special characters (parantheses ...)
-    dtfrme[new] = dtfrme[new].str.replace(r"[^\w\s]", " ", regex=True)    
+    dtfrme[new] = dtfrme[new].str.replace(r"[^\w\s]", " ", regex=True)        
     # normalize spaces
-    dtfrme[new] = dtfrme[new].str.replace(r"\s+", " ", regex=True)    
+    dtfrme[new] = dtfrme[new].str.replace(r"\s+", " ", regex=True) 
+
     # strip
     dtfrme[new] = dtfrme[new].str.strip()
     return dtfrme
@@ -69,7 +70,12 @@ def prepare_all_words(df, column, stop_words): # function to prepare vocabularie
 
     return words
 
-
+def remove_numeric_tokens(text):
+    if not isinstance(text, str):
+        return text
+    tokens = text.split()
+    tokens = [t for t in tokens if not t.isdigit()]
+    return " ".join(tokens)
 
 X_train = pd.read_csv("X_train_update.csv")
 Y_train = pd.read_csv("Y_train_CVw08PX.csv")
@@ -80,11 +86,12 @@ df = pd.merge(X_train, Y_train, on="Unnamed: 0")
 clean_txt_colmn(df,"designation")
 clean_txt_colmn(df,"description")
 
-design_words = prepare_all_words(df, "designation_clean", stop_words)
-descrp_words = prepare_all_words(df, "description_clean", stop_words)
-
-# remove reteated block of texts  only to descriptions
+# remove repeated block of texts  only to descriptions
 df["description_dedup"] = df["description_clean"].apply(remove_repeated_blocks)
+
+# create new, cleaned columns without digits
+df["designation_nodigits"] = df["designation_clean"].apply(remove_numeric_tokens)
+df["description_nodigits"] = df["description_dedup"].apply(remove_numeric_tokens)
 
 df.to_csv("train_clean.csv", index=False)
 
