@@ -1,6 +1,4 @@
-# %%
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 import re
 import nltk
@@ -87,4 +85,6 @@ descrp_words = prepare_all_words(df, "description_clean", stop_words)
 
 # remove reteated block of texts  only to descriptions
 df["description_dedup"] = df["description_clean"].apply(remove_repeated_blocks)
+
+df.to_csv("train_clean.csv", index=False)
 
