@@ -1,57 +1,65 @@
 # Rakuten Data Science
 
-Team repository for the Rakuten multimodal project.
+Multimodal machine learning project for product classification using text and images.
 
-## Project setup
+## Overview
 
-We use:
+This repository contains the codebase for the Rakuten project.
+
+We focus on:
+
+- text-based models
+- image-based models
+- multimodal approaches combining both
+
+## Tech stack
 
 - Python 3.12
-- uv for dependency management
-- Kaggle for dataset sharing
-- GitHub for code, configuration and documentation
+- uv (dependency management)
+- scikit-learn / ML libraries
+- Kaggle (dataset hosting)
+- GitHub (code & collaboration)
 
 ## Repository structure
 
-docs/
-data/
-notebooks/
-scripts/
-src/
-tests/
+docs/ → project documentation  
+data/ → local dataset (not tracked by Git)  
+notebooks/ → exploration and experiments  
+scripts/ → setup and utility scripts  
+src/ → reusable code  
+tests/ → validation and tests  
 
-## Environment setup
+## Quick start
 
-Clone the repository and install the project environment:
+Clone the repository:
 
-git clone <repository-url>
+git clone <repository-url>  
 cd Rakuten_Data_Science
+
+Install dependencies:
+
 uv sync
 
-## Data setup
-
-Raw data is not stored in Git.
-
-The dataset is shared via Kaggle and should be downloaded locally.
-Use the setup script:
+Prepare data:
 
 .\scripts\setup_data.ps1
 
-This script prepares the local data structure under:
+## Data handling
 
-data/
-└── raw/
+- Raw data is **not stored in Git**
+- Dataset is shared via Kaggle
+- Data is stored locally in:
 
-## Rules
+data/raw/
 
-- Do not commit raw data
-- Do not commit large image files
-- Do not commit secrets or Kaggle credentials
-- Use notebooks for exploration
-- Move reusable code into src/
+## Key principles
+
+- Separation of code and data
+- Reproducible environment via uv
+- Clean and modular project structure
 
 ## Workflow
 
-Additional setup and workflow details are documented in:
+Detailed workflow instructions are available in:
 
 docs/WORKFLOW.md
