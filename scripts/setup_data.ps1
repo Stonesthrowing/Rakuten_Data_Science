@@ -1,6 +1,8 @@
 # setup_data.ps1
 # Prepare dataset folder structure for the Rakuten project
 
+$ErrorActionPreference = "Stop"
+
 Write-Host ""
 Write-Host "Rakuten dataset setup starting..."
 Write-Host ""
@@ -40,19 +42,27 @@ Write-Host ""
 # OPTIONAL: Kaggle dataset download
 # --------------------------------------------------
 <#
-This optional section downloads the dataset from Kaggle.
+This optional section downloads the datasets from Kaggle.
 
-Dataset:
+Images dataset:
 arturillenseer/rakuten-product-images-ml
 
-Standard command (most systems):
+CSV dataset:
+arturillenseer/csv-files
+
+Standard commands (most systems):
 
 kaggle datasets download -d arturillenseer/rakuten-product-images-ml -p data/_downloads
+kaggle datasets download -d arturillenseer/csv-files -p data/_downloads
 
 Fallback for restricted Windows systems:
 
 uv run python -c "from kaggle.cli import main; main()" datasets download `
     -d arturillenseer/rakuten-product-images-ml `
+    -p data/_downloads
+
+uv run python -c "from kaggle.cli import main; main()" datasets download `
+    -d arturillenseer/csv-files `
     -p data/_downloads
 
 Example:
@@ -61,6 +71,10 @@ $DownloadPath = Join-Path $ProjectRoot "data\_downloads"
 
 uv run python -c "from kaggle.cli import main; main()" datasets download `
     -d arturillenseer/rakuten-product-images-ml `
+    -p $DownloadPath
+
+uv run python -c "from kaggle.cli import main; main()" datasets download `
+    -d arturillenseer/csv-files `
     -p $DownloadPath
 #>
 
@@ -89,53 +103,53 @@ else {
 
 Write-Host "Organizing extracted dataset files..."
 
-$XTrainTarget = Join-Path $RawFolder "x_train.csv"
-$YTrainTarget = Join-Path $RawFolder "y_train.csv"
-$XTestTarget  = Join-Path $RawFolder "x_test.csv"
+$XTrainTarget = Join-Path $RawFolder "X_train.csv"
+$YTrainTarget = Join-Path $RawFolder "Y_train.csv"
+$XTestTarget  = Join-Path $RawFolder "X_test.csv"
 
 # Find CSV files
-$xTrainFile = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -match "^x_train.*\.csv$" } | Select-Object -First 1
-$yTrainFile = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -match "^y_train.*\.csv$" } | Select-Object -First 1
-$xTestFile  = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -match "^x_test.*\.csv$" }  | Select-Object -First 1
+$xTrainFile = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -ieq "X_train.csv" } | Select-Object -First 1
+$yTrainFile = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -ieq "Y_train.csv" } | Select-Object -First 1
+$xTestFile  = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -ieq "X_test.csv" }  | Select-Object -First 1
 
 if ($null -ne $xTrainFile) {
     Copy-Item -Path $xTrainFile.FullName -Destination $XTrainTarget -Force
-    Write-Host "Copied x_train to: $XTrainTarget"
+    Write-Host "Copied X_train.csv to: $XTrainTarget"
 }
 else {
-    Write-Host "x_train CSV not found."
+    Write-Host "X_train.csv not found."
 }
 
 if ($null -ne $yTrainFile) {
     Copy-Item -Path $yTrainFile.FullName -Destination $YTrainTarget -Force
-    Write-Host "Copied y_train to: $YTrainTarget"
+    Write-Host "Copied Y_train.csv to: $YTrainTarget"
 }
 else {
-    Write-Host "y_train CSV not found."
+    Write-Host "Y_train.csv not found."
 }
 
 if ($null -ne $xTestFile) {
     Copy-Item -Path $xTestFile.FullName -Destination $XTestTarget -Force
-    Write-Host "Copied x_test to: $XTestTarget"
+    Write-Host "Copied X_test.csv to: $XTestTarget"
 }
 else {
-    Write-Host "x_test CSV not found."
+    Write-Host "X_test.csv not found."
 }
 
 # Find image folders
-$ImageTrainingSource = Get-ChildItem -Path $DownloadFolder -Recurse -Directory | Where-Object { $_.Name -eq "image_training" } | Select-Object -First 1
-$ImageTestSource     = Get-ChildItem -Path $DownloadFolder -Recurse -Directory | Where-Object { $_.Name -eq "image_test" } | Select-Object -First 1
+$ImageTrainSource = Get-ChildItem -Path $DownloadFolder -Recurse -Directory | Where-Object { $_.Name -eq "image_train" } | Select-Object -First 1
+$ImageTestSource  = Get-ChildItem -Path $DownloadFolder -Recurse -Directory | Where-Object { $_.Name -eq "image_test" } | Select-Object -First 1
 
-if ($null -ne $ImageTrainingSource) {
-    $ImageTrainingTarget = Join-Path $ImagesFolder "image_training"
-    if (-not (Test-Path $ImageTrainingTarget)) {
-        New-Item -ItemType Directory -Path $ImageTrainingTarget | Out-Null
+if ($null -ne $ImageTrainSource) {
+    $ImageTrainTarget = Join-Path $ImagesFolder "image_train"
+    if (-not (Test-Path $ImageTrainTarget)) {
+        New-Item -ItemType Directory -Path $ImageTrainTarget | Out-Null
     }
-    Copy-Item -Path (Join-Path $ImageTrainingSource.FullName "*") -Destination $ImageTrainingTarget -Recurse -Force
-    Write-Host "Copied image_training to: $ImageTrainingTarget"
+    Copy-Item -Path (Join-Path $ImageTrainSource.FullName "*") -Destination $ImageTrainTarget -Recurse -Force
+    Write-Host "Copied image_train to: $ImageTrainTarget"
 }
 else {
-    Write-Host "image_training folder not found."
+    Write-Host "image_train folder not found."
 }
 
 if ($null -ne $ImageTestSource) {

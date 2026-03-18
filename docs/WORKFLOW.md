@@ -60,9 +60,13 @@ C:\Users\felix\.kaggle\kaggle.json
 
 ## 5. Download and prepare the dataset
 
-Run the setup script:
+Use the setup script that matches your operating system:
 
+Windows:
 .\scripts\setup_data.ps1
+
+macOS:
+./scripts/setup_data.sh
 
 The script will:
 
