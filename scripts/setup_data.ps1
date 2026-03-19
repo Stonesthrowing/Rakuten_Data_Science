@@ -41,7 +41,7 @@ Write-Host ""
 # --------------------------------------------------
 # OPTIONAL: Kaggle dataset download
 # --------------------------------------------------
-<#
+
 This optional section downloads the datasets from Kaggle.
 
 Images dataset:
@@ -76,7 +76,7 @@ uv run python -c "from kaggle.cli import main; main()" datasets download `
 uv run python -c "from kaggle.cli import main; main()" datasets download `
     -d arturillenseer/csv-files `
     -p $DownloadPath
-#>
+
 
 # --------------------------------------------------
 # Extract zip files from data/_downloads
