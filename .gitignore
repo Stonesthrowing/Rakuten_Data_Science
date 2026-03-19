@@ -1,5 +1,7 @@
 # Dataset
 data/
+01_DATA/
+private/
 images/*.zip
 _kaggle_download/
 images/
