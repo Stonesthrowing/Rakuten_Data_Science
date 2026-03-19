@@ -42,20 +42,20 @@ Write-Host ""
 # OPTIONAL: Kaggle dataset download
 # --------------------------------------------------
 
-This optional section downloads the datasets from Kaggle.
+#This optional section downloads the datasets from Kaggle.
 
-Images dataset:
-arturillenseer/rakuten-product-images-ml
+#Images dataset:
+#arturillenseer/rakuten-product-images-ml
 
-CSV dataset:
-arturillenseer/csv-files
+#CSV dataset:
+#arturillenseer/csv-files
 
-Standard commands (most systems):
+#Standard commands (most systems):
 
-kaggle datasets download -d arturillenseer/rakuten-product-images-ml -p data/_downloads
-kaggle datasets download -d arturillenseer/csv-files -p data/_downloads
+#kaggle datasets download -d arturillenseer/rakuten-product-images-ml -p data/_downloads
+#kaggle datasets download -d arturillenseer/csv-files -p data/_downloads
 
-Fallback for restricted Windows systems:
+#Fallback for restricted Windows systems:
 
 uv run python -c "from kaggle.cli import main; main()" datasets download `
     -d arturillenseer/rakuten-product-images-ml `
@@ -65,7 +65,7 @@ uv run python -c "from kaggle.cli import main; main()" datasets download `
     -d arturillenseer/csv-files `
     -p data/_downloads
 
-Example:
+#Example:
 
 $DownloadPath = Join-Path $ProjectRoot "data\_downloads"
 
