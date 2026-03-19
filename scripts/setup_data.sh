@@ -68,7 +68,7 @@ sync_images() {
 
     if [[ -n "$src_dir" ]]; then
         echo "🔄 Syncing $dir_name (rsync)..."
-        ensure_dir "$target_dir"
+        create_dir "$target_dir"
         # --ignore-existing
         rsync -a --ignore-existing "${src_dir}/" "${target_dir}/"
         echo "✅ $dir_name synchronized."
@@ -101,7 +101,7 @@ main() {
     sync_images "image_test"
 
     echo -e "\n📊 Current Data Structure:"
-    find "${DATA_FOLDER}" -maxdepth 3 -not -path '*/.*' | sort
+    find "${DATA_FOLDER}" -maxdepth 2 -not -path '*/.*' | sort
 
     echo -e "\n✨ All steps completed successfully!"
 }
