@@ -1,5 +1,5 @@
 # setup_data.ps1
-# Prepare dataset folder structure for the Rakuten project
+# Downloads and prepares the Rakuten datasets for the project
 
 $ErrorActionPreference = "Stop"
 
@@ -7,25 +7,30 @@ Write-Host ""
 Write-Host "Rakuten dataset setup starting..."
 Write-Host ""
 
-# Determine project root (one level above scripts)
+# --------------------------------------------------
+# Project paths
+# --------------------------------------------------
+
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
-# Define paths
-$DataFolder = Join-Path $ProjectRoot "data"
-$RawFolder = Join-Path $DataFolder "raw"
-$ImagesFolder = Join-Path $RawFolder "images"
+			  
+$DataFolder     = Join-Path $ProjectRoot "data"
+$RawFolder      = Join-Path $DataFolder "raw"
+$ImagesFolder   = Join-Path $RawFolder "images"
 $DownloadFolder = Join-Path $DataFolder "_downloads"
 
-# Create folders if they don't exist
-$folders = @(
+									
+$Folders = @(
     $DataFolder,
     $RawFolder,
     $ImagesFolder,
-    $DownloadFolder
+    $DownloadFolder,
+    (Join-Path $DataFolder "processed"),
+    (Join-Path $DataFolder "splits")
 )
 
-foreach ($folder in $folders) {
-    if (-Not (Test-Path $folder)) {
+foreach ($folder in $Folders) {
+    if (-not (Test-Path $folder)) {
         New-Item -ItemType Directory -Path $folder | Out-Null
         Write-Host "Created folder: $folder"
     }
@@ -39,66 +44,102 @@ Write-Host "Dataset folder structure is ready."
 Write-Host ""
 
 # --------------------------------------------------
-# OPTIONAL: Kaggle dataset download
+# Kaggle helper
 # --------------------------------------------------
 
-This optional section downloads the datasets from Kaggle.
+														 
 
-Images dataset:
-arturillenseer/rakuten-product-images-ml
+			   
+										
 
-CSV dataset:
-arturillenseer/csv-files
+function Invoke-KaggleDownload {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DatasetSlug,
 
-Standard commands (most systems):
+        [Parameter(Mandatory = $true)]
+        [string]$DownloadPath
+    )
 
-kaggle datasets download -d arturillenseer/rakuten-product-images-ml -p data/_downloads
-kaggle datasets download -d arturillenseer/csv-files -p data/_downloads
+    Write-Host "Downloading dataset: $DatasetSlug"
+																	   
 
-Fallback for restricted Windows systems:
+    $kaggleCmd = Get-Command kaggle -ErrorAction SilentlyContinue
 
-uv run python -c "from kaggle.cli import main; main()" datasets download `
-    -d arturillenseer/rakuten-product-images-ml `
-    -p data/_downloads
+    if ($null -ne $kaggleCmd) {
+        Write-Host "Using Kaggle CLI from PATH..."
+        & kaggle datasets download -d $DatasetSlug -p $DownloadPath
+        return
+    }
 
-uv run python -c "from kaggle.cli import main; main()" datasets download `
-    -d arturillenseer/csv-files `
-    -p data/_downloads
+    Write-Host "Kaggle CLI not found in PATH. Trying uv fallback..."
+    & uv run python -c "from kaggle.cli import main; main()" datasets download -d $DatasetSlug -p $DownloadPath
+}
+					  
 
-Example:
+# --------------------------------------------------
+# Download datasets from Kaggle
+# --------------------------------------------------
 
-$DownloadPath = Join-Path $ProjectRoot "data\_downloads"
+Write-Host "Starting Kaggle dataset download..."
+Write-Host ""
 
-uv run python -c "from kaggle.cli import main; main()" datasets download `
-    -d arturillenseer/rakuten-product-images-ml `
-    -p $DownloadPath
+																		  
+$ImagesDataset = "arturillenseer/rakuten-product-images-ml"
+$CsvDataset    = "arturillenseer/csv-files"
 
-uv run python -c "from kaggle.cli import main; main()" datasets download `
-    -d arturillenseer/csv-files `
-    -p $DownloadPath
+Invoke-KaggleDownload -DatasetSlug $ImagesDataset -DownloadPath $DownloadFolder
+Invoke-KaggleDownload -DatasetSlug $CsvDataset -DownloadPath $DownloadFolder
+					
 
+Write-Host ""
+Write-Host "Kaggle download completed."
+Write-Host ""
 
 # --------------------------------------------------
 # Extract zip files from data/_downloads
 # --------------------------------------------------
 
-Write-Host "Checking for zip files in download folder..."
+Write-Host "Checking whether zip extraction is needed..."
 
-$ZipFiles = Get-ChildItem -Path $DownloadFolder -Filter "*.zip" -File -ErrorAction SilentlyContinue
+$CsvZipPath = Join-Path $DownloadFolder "csv-files.zip"
+$ImagesZipPath = Join-Path $DownloadFolder "rakuten-product-images-ml.zip"
 
-if (-not $ZipFiles) {
-    Write-Host "No zip files found in: $DownloadFolder"
+$CsvAlreadyExtracted =
+    (Test-Path (Join-Path $DownloadFolder "X_train.csv")) -and
+    (Test-Path (Join-Path $DownloadFolder "Y_train.csv")) -and
+    (Test-Path (Join-Path $DownloadFolder "X_test.csv"))
+
+$ImagesAlreadyExtracted =
+    (Test-Path (Join-Path $DownloadFolder "image_train")) -and
+    (Test-Path (Join-Path $DownloadFolder "image_test"))
+
+if ((Test-Path $CsvZipPath) -and (-not $CsvAlreadyExtracted)) {
+    Write-Host "Extracting: csv-files.zip"
+    Expand-Archive -Path $CsvZipPath -DestinationPath $DownloadFolder -Force
+}
+elseif (Test-Path $CsvZipPath) {
+    Write-Host "Skipping extraction of csv-files.zip (already extracted)."
 }
 else {
-    foreach ($zip in $ZipFiles) {
-        Write-Host "Extracting: $($zip.Name)"
-        Expand-Archive -Path $zip.FullName -DestinationPath $DownloadFolder -Force
-    }
-    Write-Host "Zip extraction finished."
+    Write-Host "csv-files.zip not found."
 }
 
+if ((Test-Path $ImagesZipPath) -and (-not $ImagesAlreadyExtracted)) {
+    Write-Host "Extracting: rakuten-product-images-ml.zip"
+    Expand-Archive -Path $ImagesZipPath -DestinationPath $DownloadFolder -Force
+}
+elseif (Test-Path $ImagesZipPath) {
+    Write-Host "Skipping extraction of rakuten-product-images-ml.zip (already extracted)."
+}
+else {
+    Write-Host "rakuten-product-images-ml.zip not found."
+}
+
+Write-Host "Zip extraction step finished."
+
 # --------------------------------------------------
-# Move extracted files into data/raw
+# Organize extracted files into data/raw
 # --------------------------------------------------
 
 Write-Host "Organizing extracted dataset files..."
@@ -107,10 +148,37 @@ $XTrainTarget = Join-Path $RawFolder "X_train.csv"
 $YTrainTarget = Join-Path $RawFolder "Y_train.csv"
 $XTestTarget  = Join-Path $RawFolder "X_test.csv"
 
-# Find CSV files
-$xTrainFile = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -ieq "X_train.csv" } | Select-Object -First 1
-$yTrainFile = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -ieq "Y_train.csv" } | Select-Object -First 1
-$xTestFile  = Get-ChildItem -Path $DownloadFolder -Recurse -File | Where-Object { $_.Name -ieq "X_test.csv" }  | Select-Object -First 1
+function Find-FirstFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExactName
+    )
+
+    return Get-ChildItem -Path $RootPath -Recurse -File |
+        Where-Object { $_.Name -ieq $ExactName } |
+        Select-Object -First 1
+}
+
+function Find-FirstDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExactName
+    )
+
+    return Get-ChildItem -Path $RootPath -Recurse -Directory |
+        Where-Object { $_.Name -ieq $ExactName } |
+        Select-Object -First 1
+}
+
+$xTrainFile = Find-FirstFile -RootPath $DownloadFolder -ExactName "X_train.csv"
+$yTrainFile = Find-FirstFile -RootPath $DownloadFolder -ExactName "Y_train.csv"
+$xTestFile  = Find-FirstFile -RootPath $DownloadFolder -ExactName "X_test.csv"
 
 if ($null -ne $xTrainFile) {
     Copy-Item -Path $xTrainFile.FullName -Destination $XTrainTarget -Force
@@ -136,9 +204,9 @@ else {
     Write-Host "X_test.csv not found."
 }
 
-# Find image folders
-$ImageTrainSource = Get-ChildItem -Path $DownloadFolder -Recurse -Directory | Where-Object { $_.Name -eq "image_train" } | Select-Object -First 1
-$ImageTestSource  = Get-ChildItem -Path $DownloadFolder -Recurse -Directory | Where-Object { $_.Name -eq "image_test" } | Select-Object -First 1
+					
+$ImageTrainSource = Find-FirstDirectory -RootPath $DownloadFolder -ExactName "image_train"
+$ImageTestSource  = Find-FirstDirectory -RootPath $DownloadFolder -ExactName "image_test"
 
 if ($null -ne $ImageTrainSource) {
     $ImageTrainTarget = Join-Path $ImagesFolder "image_train"
