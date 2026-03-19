@@ -1,133 +1,136 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
-echo
-echo "Rakuten dataset setup starting..."
-echo
 
-# Determine project root (one level above scripts)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Define paths
 DATA_FOLDER="${PROJECT_ROOT}/data"
+DOWNLOAD_FOLDER="${DATA_FOLDER}/_downloads"
 RAW_FOLDER="${DATA_FOLDER}/raw"
 IMAGES_FOLDER="${RAW_FOLDER}/images"
-DOWNLOAD_FOLDER="${DATA_FOLDER}/_downloads"
 
-# Create folders if they don't exist
-mkdir -p "${DATA_FOLDER}"
-mkdir -p "${RAW_FOLDER}"
-mkdir -p "${IMAGES_FOLDER}"
-mkdir -p "${DOWNLOAD_FOLDER}"
-mkdir -p "${DATA_FOLDER}/processed"
-mkdir -p "${DATA_FOLDER}/splits"
 
-echo "Dataset folder structure is ready."
-echo
-
-# --------------------------------------------------
-# OPTIONAL: Kaggle dataset download
-# --------------------------------------------------
-: '
-This optional section downloads the datasets from Kaggle.
-
-Images dataset:
-arturillenseer/rakuten-product-images-ml
-
-CSV dataset:
-arturillenseer/csv-files
-
-Standard commands:
-
-kaggle datasets download -d arturillenseer/rakuten-product-images-ml -p data/_downloads
-kaggle datasets download -d arturillenseer/csv-files -p data/_downloads
-'
-
-# --------------------------------------------------
-# Extract zip files from data/_downloads
-# --------------------------------------------------
-
-echo "Checking for zip files in download folder..."
-
-shopt_zip=false
-if compgen -G "${DOWNLOAD_FOLDER}"/*.zip > /dev/null; then
-  for zipfile in "${DOWNLOAD_FOLDER}"/*.zip; do
-    echo "Extracting: $(basename "${zipfile}")"
-    unzip -o "${zipfile}" -d "${DOWNLOAD_FOLDER}" > /dev/null
-  done
-  echo "Zip extraction finished."
-else
-  echo "No zip files found in: ${DOWNLOAD_FOLDER}"
-fi
-
-# --------------------------------------------------
-# Move extracted files into data/raw
-# --------------------------------------------------
-
-echo "Organizing extracted dataset files..."
-
-XTRAIN_TARGET="${RAW_FOLDER}/X_train.csv"
-YTRAIN_TARGET="${RAW_FOLDER}/Y_train.csv"
-XTEST_TARGET="${RAW_FOLDER}/X_test.csv"
-
-find_first_file() {
-  local filename="$1"
-  find "${DOWNLOAD_FOLDER}" -type f \( -iname "${filename}" \) | head -n 1
+create_dir() {
+    local dir="$1"
+    if [[ ! -d "$dir" ]]; then
+        mkdir -p "$dir"
+        echo "📁 Created directory: $dir"
+    fi
 }
 
-find_first_dir() {
-  local dirname="$1"
-  find "${DOWNLOAD_FOLDER}" -type d \( -iname "${dirname}" \) | head -n 1
+ensure_kaggle_cli() {
+    if ! command -v kaggle &> /dev/null; then
+        echo "🔍 Kaggle CLI not found. Initiating installation..."
+
+        if command -v uv &> /dev/null; then
+            echo "🚀 Installing kaggle via 'uv'..."
+            uv pip install kaggle --system
+        else
+            echo "📦 Installing kaggle via 'pip'..."
+            pip install --upgrade --no-cache-dir kaggle
+        fi
+
+        if ! command -v kaggle &> /dev/null; then
+            echo "❌ Installation failed or PATH not updated. Please install kaggle manually."
+            exit 1
+        fi
+    fi
 }
 
-XTRAIN_FILE="$(find_first_file "X_train.csv")"
-YTRAIN_FILE="$(find_first_file "Y_train.csv")"
-XTEST_FILE="$(find_first_file "X_test.csv")"
+download_kaggle() {
+    local slug="$1"      # Kaggle dataset identifier (user/dataset-name)
+    local zip_name="$2"   # Expected filename to check for existence
 
-if [[ -n "${XTRAIN_FILE}" ]]; then
-  cp -f "${XTRAIN_FILE}" "${XTRAIN_TARGET}"
-  echo "Copied X_train.csv to: ${XTRAIN_TARGET}"
-else
-  echo "X_train.csv not found."
-fi
+    # Ensure dependencies are met before proceeding
+    ensure_kaggle_cli
 
-if [[ -n "${YTRAIN_FILE}" ]]; then
-  cp -f "${YTRAIN_FILE}" "${YTRAIN_TARGET}"
-  echo "Copied Y_train.csv to: ${YTRAIN_TARGET}"
-else
-  echo "Y_train.csv not found."
-fi
+    # Check for existing download to avoid redundant bandwidth usage (Idempotency)
+    if [[ -f "${DOWNLOAD_FOLDER}/${zip_name}" ]]; then
+        echo "⏭️  Already downloaded: $zip_name"
+    else
+        echo "📥 Downloading dataset: $slug..."
+        # Download command with error handling
+        kaggle datasets download -d "$slug" -p "${DOWNLOAD_FOLDER}" || {
+            echo "❌ Download failed!";
+            exit 1;
+        }
+    fi
+}
 
-if [[ -n "${XTEST_FILE}" ]]; then
-  cp -f "${XTEST_FILE}" "${XTEST_TARGET}"
-  echo "Copied X_test.csv to: ${XTEST_TARGET}"
-else
-  echo "X_test.csv not found."
-fi
+extract_zip() {
+    local zip_path="$1"
+    echo "📦 Extracting $(basename "$zip_path")..."
+    unzip -uo "$zip_path" -d "${DOWNLOAD_FOLDER}" > /dev/null || { echo "❌ Extraction failed!"; exit 1; }
+    echo "✅ Extraction complete."
+}
 
-IMAGE_TRAIN_SOURCE="$(find_first_dir "image_train")"
-IMAGE_TEST_SOURCE="$(find_first_dir "image_test")"
 
-if [[ -n "${IMAGE_TRAIN_SOURCE}" ]]; then
-  IMAGE_TRAIN_TARGET="${IMAGES_FOLDER}/image_train"
-  mkdir -p "${IMAGE_TRAIN_TARGET}"
-  cp -R "${IMAGE_TRAIN_SOURCE}"/. "${IMAGE_TRAIN_TARGET}/"
-  echo "Copied image_train to: ${IMAGE_TRAIN_TARGET}"
-else
-  echo "image_train folder not found."
-fi
+sync_file() {
+    local filename="$1"
+    local target="${RAW_FOLDER}/${filename}"
 
-if [[ -n "${IMAGE_TEST_SOURCE}" ]]; then
-  IMAGE_TEST_TARGET="${IMAGES_FOLDER}/image_test"
-  mkdir -p "${IMAGE_TEST_TARGET}"
-  cp -R "${IMAGE_TEST_SOURCE}"/. "${IMAGE_TEST_TARGET}/"
-  echo "Copied image_test to: ${IMAGE_TEST_TARGET}"
-else
-  echo "image_test folder not found."
-fi
+    if [[ -f "$target" ]]; then
+        echo "⏭️  File already in raw: $filename"
+    else
+        local src
+        src=$(find "${DOWNLOAD_FOLDER}" -type f -iname "$filename" | head -n 1)
+        if [[ -n "$src" ]]; then
+            cp -f "$src" "$target"
+            echo "✅ Moved $filename to raw."
+        else
+            echo "⚠️  Warning: $filename not found!"
+        fi
+    fi
+}
 
-echo "Dataset organization step finished."
-echo
-echo "Current data folder structure:"
-find "${DATA_FOLDER}" -maxdepth 3 | sort
+
+sync_images() {
+    local dir_name="$1"
+    local target_dir="${IMAGES_FOLDER}/${dir_name}"
+    local src_dir
+
+    src_dir=$(find "${DOWNLOAD_FOLDER}" -type d -iname "$dir_name" | head -n 1)
+
+    if [[ -n "$src_dir" ]]; then
+        echo "🔄 Syncing $dir_name (rsync)..."
+        create_dir "$target_dir"
+        # --ignore-existing
+        rsync -a --ignore-existing "${src_dir}/" "${target_dir}/"
+        echo "✅ $dir_name synchronized."
+    else
+        echo "⚠️  Warning: Source folder $dir_name not found!"
+    fi
+}
+
+
+main() {
+    echo "🚀 Starting functional data setup..."
+
+    create_dir "${DOWNLOAD_FOLDER}"
+    create_dir "${RAW_FOLDER}"
+    create_dir "${IMAGES_FOLDER}"
+    create_dir "${DATA_FOLDER}/processed"
+
+    download_kaggle "arturillenseer/rakuten-product-images-ml" "rakuten-product-images-ml.zip"
+    download_kaggle "arturillenseer/csv-files" "csv-files.zip"
+
+    for zip in "${DOWNLOAD_FOLDER}"/*.zip; do
+        [[ -e "$zip" ]] && extract_zip "$zip"
+    done
+
+    for csv in "X_train.csv" "Y_train.csv" "X_test.csv"; do
+        sync_file "$csv"
+    done
+
+    sync_images "image_train"
+    sync_images "image_test"
+
+    echo -e "\n📊 Current Data Structure:"
+    find "${DATA_FOLDER}" -maxdepth 2 -not -path '*/.*' | sort
+
+    echo -e "\n✨ All steps completed successfully!"
+}
+
+main
