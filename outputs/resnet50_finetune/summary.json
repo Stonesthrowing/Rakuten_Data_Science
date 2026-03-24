@@ -1,0 +1,17 @@
+{
+  "run_name": "resnet50_finetune",
+  "input_model_path": "outputs/resnet50_frozen/best_model.keras",
+  "image_size": [
+    224,
+    224
+  ],
+  "batch_size": 64,
+  "epochs": 5,
+  "learning_rate": 1e-05,
+  "fine_tune_from_layer_name": "conv5_block1_1_conv",
+  "num_classes": 27,
+  "train_samples": 67932,
+  "val_samples": 16984,
+  "val_accuracy": 0.6507889778615167,
+  "training_time_sec": 1841.1802201271057
+}
