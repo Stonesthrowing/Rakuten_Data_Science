@@ -1,0 +1,21 @@
+{
+  "experiment": "cnn_baseline_256",
+  "img_size": 256,
+  "batch_size": 64,
+  "epochs_requested": 15,
+  "epochs_completed": 7,
+  "num_classes": 27,
+  "train_size": 67932,
+  "val_size": 16984,
+  "best_val_accuracy": 0.500883162021637,
+  "best_val_loss": 1.7594449520111084,
+  "avg_epoch_time_sec": 168.4856595311846,
+  "avg_epoch_time_min": 2.8080943255197437,
+  "total_training_time_sec": 1179.4722411632538,
+  "total_training_time_min": 19.65787068605423,
+  "model_best_path": "/dss/lxclscratch/0E/lu23tin/lu23tin/rakuten_data/outputs/cnn_256_best.keras",
+  "model_final_path": "/dss/lxclscratch/0E/lu23tin/lu23tin/rakuten_data/outputs/cnn_256_final.keras",
+  "history_path": "/dss/lxclscratch/0E/lu23tin/lu23tin/rakuten_data/outputs/cnn_256_history.csv",
+  "predictions_path": "/dss/lxclscratch/0E/lu23tin/lu23tin/rakuten_data/outputs/cnn_256_val_predictions.csv",
+  "class_indices_path": "/dss/lxclscratch/0E/lu23tin/lu23tin/rakuten_data/outputs/cnn_256_class_indices.json"
+}

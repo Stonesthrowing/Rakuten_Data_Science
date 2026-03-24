@@ -1,0 +1,15 @@
+{
+  "run_name": "resnet50_frozen",
+  "image_size": [
+    224,
+    224
+  ],
+  "batch_size": 64,
+  "epochs": 10,
+  "learning_rate": 0.001,
+  "num_classes": 27,
+  "train_samples": 67932,
+  "val_samples": 16984,
+  "val_accuracy": 0.5960315591144607,
+  "training_time_sec": 3083.393050670624
+}

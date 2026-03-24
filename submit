@@ -1,0 +1,50 @@
+#!/bin/bash
+#SBATCH -o ./ds-rakuten.%j.out
+#SBATCH -D ./
+#SBATCH -J cnn256
+#SBATCH --clusters=inter
+#SBATCH --partition=cm4_inter
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=32G
+#SBATCH --time=08:00:00
+
+set -euo pipefail
+
+cd /dss/dsshome1/lxc0E/lu23tin/ds/Rakuten_Data_Science/
+source .venv/bin/activate
+
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export TF_NUM_INTRAOP_THREADS=$SLURM_CPUS_PER_TASK
+export TF_NUM_INTEROP_THREADS=2
+
+export RAKUTEN_DATA_DIR="$TMPDIR/rakuten_data/raw"
+export RAKUTEN_OUTPUT_DIR="$TMPDIR/rakuten_data/outputs"
+
+echo "Job started at: $(date)"
+
+# Create TMPDIR structure
+mkdir -p "$RAKUTEN_DATA_DIR"
+mkdir -p "$RAKUTEN_OUTPUT_DIR"
+mkdir -p outputs
+
+# Always copy outputs back even if job crashes
+trap 'rsync -a "$RAKUTEN_OUTPUT_DIR/" outputs/ || true' EXIT
+
+# Copy input data to TMPDIR
+rsync -a data/raw/X_train.csv "$RAKUTEN_DATA_DIR/"
+rsync -a data/raw/Y_train.csv "$RAKUTEN_DATA_DIR/"
+rsync -a data/raw/images/ "$RAKUTEN_DATA_DIR/images/"
+
+# Run training script
+python -u train_cnn_256.py
+
+echo "Training finished at: $(date)"
+
+# Cleanup TMPDIR
+if [ -d "$TMPDIR/rakuten_data" ]; then
+    rm -r "$TMPDIR/rakuten_data"
+fi
+
+echo "Job finished at: $(date)"
