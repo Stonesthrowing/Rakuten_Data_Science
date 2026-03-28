@@ -1,0 +1,9 @@
+<class 'pandas.DataFrame'>
+RangeIndex: 84916 entries, 0 to 84915
+Data columns (total 2 columns):
+ #   Column       Non-Null Count  Dtype
+---  ------       --------------  -----
+ 0   Unnamed: 0   84916 non-null  int64
+ 1   prdtypecode  84916 non-null  int64
+dtypes: int64(2)
+memory usage: 1.3 MB

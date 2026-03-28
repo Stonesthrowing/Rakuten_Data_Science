@@ -1,0 +1,72 @@
+{
+  "files": {
+    "x_train": "D:\\Rakuten_Data_Science\\data\\raw\\X_train.csv",
+    "y_train": "D:\\Rakuten_Data_Science\\data\\raw\\Y_train.csv",
+    "x_test": "D:\\Rakuten_Data_Science\\data\\raw\\X_test.csv",
+    "images_root": "D:\\Rakuten_Data_Science\\data\\raw\\images",
+    "image_train": "D:\\Rakuten_Data_Science\\data\\raw\\images\\image_train",
+    "image_test": "D:\\Rakuten_Data_Science\\data\\raw\\images\\image_test"
+  },
+  "shapes": {
+    "X_train": [
+      84916,
+      5
+    ],
+    "Y_train": [
+      84916,
+      2
+    ],
+    "X_test": [
+      13812,
+      5
+    ],
+    "merged_train": [
+      84916,
+      6
+    ]
+  },
+  "n_classes": 27,
+  "class_distribution": {
+    "largest_class": 10209,
+    "smallest_class": 764,
+    "top_class": "2583",
+    "bottom_class": "1180"
+  },
+  "missing_description_pct": 35.09350416882566,
+  "image_linkage": {
+    "train_images_count": 84916,
+    "dataset_rows": 84916,
+    "matches": 84916,
+    "missing": 0
+  },
+  "token_length_outliers": {
+    "designation_ratio": 0.03233783974751519,
+    "description_nonempty_ratio": 0.047464901433039934
+  },
+  "description_repeated_blocks": {
+    "rows_flagged": 1232,
+    "percentage": 1.4508455414762824
+  },
+  "description_deduplication": {
+    "rows_changed": 1232,
+    "percentage_changed": 1.4508455414762824
+  },
+  "description_box_stats": {
+    "clean": {
+      "q1": 40.0,
+      "median": 99.0,
+      "q3": 170.0,
+      "iqr": 130.0,
+      "lower_whisker": -155.0,
+      "upper_whisker": 365.0
+    },
+    "dedup": {
+      "q1": 40.0,
+      "median": 99.0,
+      "q3": 170.0,
+      "iqr": 130.0,
+      "lower_whisker": -155.0,
+      "upper_whisker": 365.0
+    }
+  }
+}

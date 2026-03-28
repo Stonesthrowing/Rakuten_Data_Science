@@ -1,0 +1,45 @@
+{
+  "resolved_paths": {
+    "x_train": "D:\\Rakuten_Data_Science\\data\\raw\\X_train.csv",
+    "y_train": "D:\\Rakuten_Data_Science\\data\\raw\\Y_train.csv",
+    "x_test": "D:\\Rakuten_Data_Science\\data\\raw\\X_test.csv",
+    "images_root": "D:\\Rakuten_Data_Science\\data\\raw\\images",
+    "image_train": "D:\\Rakuten_Data_Science\\data\\raw\\images\\image_train",
+    "image_test": "D:\\Rakuten_Data_Science\\data\\raw\\images\\image_test"
+  },
+  "data_dir": "D:\\Rakuten_Data_Science\\data\\raw",
+  "output_dir": "D:\\Rakuten_Data_Science\\outputs\\01_tabular_data_exploration",
+  "shapes": {
+    "X_train": [
+      84916,
+      5
+    ],
+    "Y_train": [
+      84916,
+      2
+    ],
+    "X_test": [
+      13812,
+      5
+    ],
+    "train_merged": [
+      84916,
+      6
+    ]
+  },
+  "missing_values": {
+    "Unnamed: 0": 0,
+    "designation": 0,
+    "description": 29800,
+    "productid": 0,
+    "imageid": 0,
+    "prdtypecode": 0
+  },
+  "missing_description_pct": 35.09350416882566,
+  "n_classes": 27,
+  "image_linkage": {
+    "matches": 84916,
+    "missing": 0
+  },
+  "description_repeated_blocks": 1232
+}
