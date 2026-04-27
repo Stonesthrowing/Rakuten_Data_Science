@@ -43,8 +43,8 @@ CATEGORY_PATH = BASE_DIR / "config" / "prdtypecode_mapping.json"
 with open(CATEGORY_PATH, "r", encoding="utf-8") as f:
     PRDTYPECODE_TO_NAME = {int(k): v for k, v in json.load(f).items()}
 
-st.title("Final Fusion Prediction")
-st.caption("Upload a CSV and product image. Designation and Description are filled automatically if a matching row is found.")
+st.title("🚀 Prediction")
+st.caption("Upload a CSV and product image. Metadata is filled automatically if a matching row is found.")
 
 
 @st.cache_resource
@@ -157,6 +157,9 @@ if "csv_status" not in st.session_state:
 if "prediction_output" not in st.session_state:
     st.session_state.prediction_output = None
 
+if "image_uploader_key" not in st.session_state:
+    st.session_state.image_uploader_key = 0
+
 left_col, middle_col, right_col = st.columns([1.25, 1.05, 0.95], gap="medium")
 
 df = None
@@ -175,17 +178,31 @@ with left_col:
         if st.session_state.last_csv_name is not None:
             st.session_state.csv_status = "CSV deleted."
             st.session_state.last_csv_name = None
+            st.session_state.image_uploader_key += 1
+            st.session_state.last_image_name = None
+            clear_image_related_state()
         else:
             st.session_state.csv_status = "No CSV loaded."
     else:
         try:
             df = pd.read_csv(csv_file)
             st.session_state.csv_status = f"CSV loaded: {len(df)} rows"
-            st.session_state.last_csv_name = csv_file.name
+
+            if csv_file.name != st.session_state.last_csv_name:
+                st.session_state.last_csv_name = csv_file.name
+                st.session_state.image_uploader_key += 1
+                st.session_state.last_image_name = None
+                clear_image_related_state()
+
         except Exception:
             df = None
             st.session_state.csv_status = "CSV could not be read."
-            st.session_state.last_csv_name = csv_file.name
+
+            if csv_file.name != st.session_state.last_csv_name:
+                st.session_state.last_csv_name = csv_file.name
+                st.session_state.image_uploader_key += 1
+                st.session_state.last_image_name = None
+                clear_image_related_state()
 
     st.markdown(
         f"<div class='small-info'>{st.session_state.csv_status}</div>",
@@ -195,7 +212,8 @@ with left_col:
     image_file = st.file_uploader(
         "Product image",
         type=["jpg", "jpeg", "png"],
-        label_visibility="visible"
+        label_visibility="visible",
+        key=f"image_uploader_{st.session_state.image_uploader_key}"
     )
 
     if image_file is None:
