@@ -15,3 +15,10 @@ Thumbs.db
 
 # logs
 *.log
+# Modell-Outputs (zu groß für Git)
+outputs/**/*.npy
+outputs/**/*.pt
+outputs/**/*.pth
+
+# Projektdateien
+project_tree.txt

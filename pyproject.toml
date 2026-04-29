@@ -18,6 +18,13 @@ dependencies = [
     "torchvision",
     "torchaudio",
     "seaborn>=0.13.2",
+    "transformers>=5.5.4",
+    "sentencepiece>=0.2.1",
+    "protobuf>=7.34.0",
+    "huggingface-hub>=1.11.0",
+    "opencv-python>=4.13.0.92",
+    "timm>=1.0.26",
+    "grad-cam>=1.5.5",
 ]
 
 [tool.uv.sources]
