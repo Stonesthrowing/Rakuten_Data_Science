@@ -63,3 +63,16 @@ data/raw/
 Detailed workflow instructions are available in:
 
 docs/WORKFLOW.md
+
+## Environment Setup and Running the Streamlit App
+
+There should be only one `.venv` folder in the project root.
+
+Make sure `streamlit` is listed in the `pyproject.toml` file under `dependencies`.
+
+Install all project dependencies:
+
+```bash
+uv sync
+
+Activate the virtual environment:
