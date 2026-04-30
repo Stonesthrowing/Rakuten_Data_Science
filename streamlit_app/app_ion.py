@@ -1270,27 +1270,27 @@ elif section == "Live Demo":
            
     st.divider()
 
-st.subheader("2. User input")
+    st.subheader("2. User input")
 
-user_designation = st.text_input("Product title / designation")
-user_description = st.text_area("Product description (optional)")
+    user_designation = st.text_input("Product title / designation")
+    user_description = st.text_area("Product description (optional)")
 
-if st.button("Predict user input"):
-    if user_designation.strip() == "":
-        st.warning("Please enter a product title.")
-    else:        
-        text_input = normalize_and_remove_stopwords(user_designation.strip())
+    if st.button("Predict user input"):
+        if user_designation.strip() == "":
+            st.warning("Please enter a product title.")
+        else:        
+            text_input = normalize_and_remove_stopwords(user_designation.strip())
 
-        if user_description.strip() != "":            
-            text_input_a = remove_repeated_blocks(user_description.strip())
-            text_input_b = normalize_and_remove_stopwords(text_input_a)
-            text_input += " " + text_input_b
+            if user_description.strip() != "":            
+                text_input_a = remove_repeated_blocks(user_description.strip())
+                text_input_b = normalize_and_remove_stopwords(text_input_a)
+                text_input += " " + text_input_b
 
-        pred_df = predict_top3(text_input, MODEL_DIR)
+            pred_df = predict_top3(text_input, MODEL_DIR)
 
-        st.markdown("#### Predicted category")
+            st.markdown("#### Predicted category")
 
-        display_formatted_df(pred_df)
+            display_formatted_df(pred_df)
 
 
 # =========================
