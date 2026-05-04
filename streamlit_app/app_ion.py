@@ -46,10 +46,10 @@ def normalize_and_remove_stopwords(text):
 
 
 
-APP_DIR = Path(__file__).parent
-ROOT_DIR = APP_DIR.parent
-IMAGE_DIR = ROOT_DIR / "images"
-MODEL_DIR = ROOT_DIR / "models" / "camembert_run4"
+IMAGE_DIR = ROOT_DIR / "streamlit_app" / "images"
+X_TEST_PATH = ROOT_DIR / "data" / "raw" / "test_clean.csv"
+IMG_DIR = ROOT_DIR / "data" / "raw" / "images" / "image_test"
+MODEL_DIR = ROOT_DIR / "data" / "models" / "camembert_run4"
 
 label_names = {
     2583: "swimming pool",
@@ -1207,12 +1207,6 @@ elif section == "Live Demo":
         The app shows the product text, its image, and the top predicted categories.
         """
     )
-
-    # paths
-    X_TEST_PATH = ROOT_DIR / "test_clean.csv"
-    temp_dir = ROOT_DIR.parent
-    IMG_DIR = temp_dir / "data/raw/images/image_test"
-    MODEL_DIR = ROOT_DIR / "models/camembert_run4"
 
     @st.cache_data
     def load_x_test(path):
