@@ -44,7 +44,8 @@ def normalize_and_remove_stopwords(text):
     tokens = [t for t in text.split() if t not in stopword_set and len(t) > 1]
     return re.sub(r"\s+", " ", " ".join(tokens)).strip()
 
-
+APP_DIR = Path(__file__).resolve()
+ROOT_DIR = APP_DIR.parent
 
 IMAGE_DIR = ROOT_DIR / "streamlit_app" / "images"
 X_TEST_PATH = ROOT_DIR / "data" / "raw" / "test_clean.csv"
