@@ -14,25 +14,25 @@ st.set_page_config(
     layout="wide",
 )
 
-APP_DIR = Path(__file__).resolve().parent
+APP_DIR  = Path(__file__).resolve().parent
+DATA_DIR = APP_DIR.parent / "data"   # shared data folder agreed upon by the team
 
-MM_LATE_DIR  = APP_DIR.parent / "outputs" / "MM_CamemBERT_ConvNeXtBase_LateFusion"
-MM_INTER_DIR = APP_DIR.parent / "outputs" / "MM_CamemBERT_ConvNeXtBase_IntermediateFusion"
+MM_LATE_DIR  = DATA_DIR / "Streamlit" / "MM_CamemBERT_ConvNeXtBase_LateFusion"
+MM_INTER_DIR = DATA_DIR / "Streamlit" / "MM_CamemBERT_ConvNeXtBase_IntermediateFusion"
 
 # -------------------------------------------------------------------
-# Search paths: local C:\Streamlit first, then the shared Kaggle dataset.
+# Search paths for image-model artifacts.
 #
-# Expected shareable structure:
-#   Local:  C:\Streamlit\I12_ConvNeXT\...
-#   Kaggle: /kaggle/input/streamlit/Streamlit/I12_ConvNeXT/...
+# Primary:  <project_root>/data/Streamlit/I12_ConvNeXT  (team-agreed location)
+# Kaggle:   /kaggle/input/streamlit/...
 #
-# Both "streamlit" and "Streamlit" are supported on Kaggle to avoid
-# case-sensitivity problems. APP_DIR is kept as a final fallback so the app
-# also works when all files are placed next to app.py.
+# APP_DIR is kept as a final fallback so the app also works when all
+# files are placed next to app.py.
 # -------------------------------------------------------------------
 LOCAL_CANDIDATES = [
-    Path(r"C:\Users\felix\Downloads\Streamlit\I12_ConvNeXT"),
-    Path(r"C:\Users\felix\Downloads\Streamlit"),
+    DATA_DIR / "Streamlit" / "I12_ConvNeXT",   # primary — team-agreed project data folder
+    DATA_DIR / "Streamlit",
+    DATA_DIR,
 ]
 
 KAGGLE_DATASETS = [
@@ -303,11 +303,11 @@ IMAGE_MODEL_RESULTS = [
     {"Model": "Model_I2_CNN128_ModerateAug_FromScratch", "Family": "CNN baseline", "Image size": "128", "Training strategy": "From scratch", "Augmentation": "Moderate", "Accuracy": 0.5694, "Macro F1": 0.4984, "Weighted F1": 0.5578, "Best epoch": "45", "Hardware / time": "Tesla T4 / not stated"},
     {"Model": "Model_I3_CNN256_NoAug_FromScratch", "Family": "CNN baseline", "Image size": "256", "Training strategy": "From scratch", "Augmentation": "No", "Accuracy": 0.5767, "Macro F1": 0.5090, "Weighted F1": 0.5627, "Best epoch": "33", "Hardware / time": "Tesla T4 / 68.76 min"},
     {"Model": "Model_I5_ResNet50_NoAug_Frozen", "Family": "ResNet", "Image size": "224", "Training strategy": "Frozen pretrained backbone", "Augmentation": "No", "Accuracy": 0.5948, "Macro F1": 0.5540, "Weighted F1": 0.5888, "Best epoch": "15", "Hardware / time": "123.9 min; 2x Tesla T4 / Kaggle"},
-    {"Model": "Model_I6_ResNet50_ModerateAug_Partial", "Family": "ResNet", "Image size": "224", "Training strategy": "Partial unfreezing", "Augmentation": "Moderate", "Accuracy": 0.6752, "Macro F1": 0.6409, "Weighted F1": None, "Best epoch": "17", "Hardware / time": "58.44 min; RTX 5070 Ti"},
-    {"Model": "Model_I7_ResNet50_ModerateAug_Full", "Family": "ResNet", "Image size": "224", "Training strategy": "Full unfreezing", "Augmentation": "Moderate", "Accuracy": None, "Macro F1": 0.6533, "Weighted F1": None, "Best epoch": "10", "Hardware / time": "111.65 min; RTX 5070 Ti"},
+    {"Model": "Model_I6_ResNet50_ModerateAug_Partial", "Family": "ResNet", "Image size": "224", "Training strategy": "Partial unfreezing", "Augmentation": "Moderate", "Accuracy": 0.6752, "Macro F1": 0.6410, "Weighted F1": 0.6718, "Best epoch": "17", "Hardware / time": "58.44 min; RTX 5070 Ti"},
+    {"Model": "Model_I7_ResNet50_ModerateAug_Full", "Family": "ResNet", "Image size": "224", "Training strategy": "Full unfreezing", "Augmentation": "Moderate", "Accuracy": 0.6849, "Macro F1": 0.6533, "Weighted F1": 0.6842, "Best epoch": "10", "Hardware / time": "111.65 min; RTX 5070 Ti"},
     {"Model": "Model_I8_ResNet50_ModerateAug_FromScratch", "Family": "ResNet", "Image size": "224", "Training strategy": "Random initialization", "Augmentation": "Moderate", "Accuracy": 0.5768, "Macro F1": 0.5105, "Weighted F1": 0.5601, "Best epoch": "18", "Hardware / time": "329.37 min; hardware not explicitly stated"},
-    {"Model": "Model_I8b_ResNet101_NoAug_Frozen", "Family": "ResNet", "Image size": "224", "Training strategy": "Frozen pretrained backbone", "Augmentation": "No", "Accuracy": "0.5425-0.5701", "Macro F1": "0.4971-0.5212", "Weighted F1": None, "Best epoch": "16", "Hardware / time": "hardware/time incomplete"},
-    {"Model": "Model_I9_ConvNeXt_Tiny_ModerateAug_Full", "Family": "ConvNeXt", "Image size": "224", "Training strategy": "Full unfreeze", "Augmentation": "Moderate", "Accuracy": 0.7144, "Macro F1": 0.6852, "Weighted F1": None, "Best epoch": "-", "Hardware / time": "71.04 min; RTX 5070 Ti"},
+    {"Model": "Model_I8b_ResNet101_NoAug_Frozen", "Family": "ResNet", "Image size": "224", "Training strategy": "Frozen pretrained backbone", "Augmentation": "No", "Accuracy": "0.5425-0.5701", "Macro F1": "0.4971-0.5212", "Weighted F1": "—", "Best epoch": "16", "Hardware / time": "hardware/time incomplete"},
+    {"Model": "Model_I9_ConvNeXt_Tiny_ModerateAug_Full", "Family": "ConvNeXt", "Image size": "224", "Training strategy": "Full unfreeze", "Augmentation": "Moderate", "Accuracy": 0.7144, "Macro F1": 0.6850, "Weighted F1": 0.7112, "Best epoch": "19", "Hardware / time": "71.04 min; RTX 5070 Ti"},
     {"Model": "Model_I10_EfficientNetB0_NoAug_Partial", "Family": "EfficientNet", "Image size": "224", "Training strategy": "Partial fine-tuning", "Augmentation": "No", "Accuracy": 0.6173, "Macro F1": 0.5684, "Weighted F1": 0.6089, "Best epoch": "-", "Hardware / time": "33.18 min; RTX PRO 6000 Blackwell SE"},
     {"Model": "Model_I11_EfficientNetB0_ModerateAug_Partial", "Family": "EfficientNet", "Image size": "224", "Training strategy": "Partial fine-tuning", "Augmentation": "Moderate", "Accuracy": 0.5990, "Macro F1": 0.5489, "Weighted F1": 0.5892, "Best epoch": "-", "Hardware / time": "CUDA GPU; duration not fixed"},
     {"Model": "Model_I12_ConvNeXt_Base_ModerateAug_Full", "Family": "ConvNeXt", "Image size": "224", "Training strategy": "Full unfreeze", "Augmentation": "Moderate", "Accuracy": 0.7200, "Macro F1": 0.6924, "Weighted F1": 0.7200, "Best epoch": "20", "Hardware / time": "160.82 min; RTX 5070 Ti"},
@@ -760,8 +760,11 @@ def _mm_path(base, filename):
 
 mm_late_meta     = load_json(_mm_path(MM_LATE_DIR,  "run_metadata.json")) or {}
 mm_late_report   = load_text(_mm_path(MM_LATE_DIR,  "fusion_classification_report.txt")) or ""
+mm_late_cm_png   = _mm_path(MM_LATE_DIR,  "confusion_matrix.png")
+mm_late_preds    = prepare_predictions(load_csv(_mm_path(MM_LATE_DIR, "val_predictions.csv")))
 mm_inter_meta    = load_json(_mm_path(MM_INTER_DIR, "run_metadata.json")) or {}
 mm_inter_history = pd.DataFrame(load_json(_mm_path(MM_INTER_DIR, "history.json")) or [])
+mm_inter_cm_png  = _mm_path(MM_INTER_DIR, "confusion_matrix.png")
 
 
 # Global readability tweaks for 1080p and 4K screens.
@@ -954,13 +957,13 @@ st.sidebar.markdown("\n".join(nav_html), unsafe_allow_html=True)
 st.sidebar.markdown("---")
 st.sidebar.caption("Image folders for Prediction Explorer / Error Analysis")
 default_image_dirs = "\n".join([
-    # Local app/data layout
-    r"C:\Streamlit\I12_ConvNeXT\images\image_train",
-    r"C:\Streamlit\I12_ConvNeXT\image_train",
-    r"C:\Streamlit\images\image_train",
-    r"C:\Streamlit\image_train",
+    # Primary — team-agreed project data folder
+    str(DATA_DIR / "Streamlit" / "I12_ConvNeXT" / "images" / "image_train"),
+    str(DATA_DIR / "Streamlit" / "I12_ConvNeXT" / "image_train"),
+    str(DATA_DIR / "images" / "image_train"),
+    str(DATA_DIR / "image_train"),
 
-    # Kaggle Streamlit dataset layout, if images are copied there later
+    # Kaggle Streamlit dataset layout
     "/kaggle/input/streamlit/Streamlit/I12_ConvNeXT/images/image_train",
     "/kaggle/input/streamlit/Streamlit/I12_ConvNeXT/image_train",
     "/kaggle/input/streamlit/Streamlit/images/image_train",
@@ -970,13 +973,13 @@ default_image_dirs = "\n".join([
     "/kaggle/input/streamlit/images/image_train",
     "/kaggle/input/streamlit/image_train",
 
-    # Separate Kaggle image dataset: https://www.kaggle.com/datasets/arturillenseer/rakuten-product-images-ml
+    # Separate Kaggle image dataset
     "/kaggle/input/rakuten-product-images-ml/image_train",
     "/kaggle/input/rakuten-product-images-ml/images/image_train",
     "/kaggle/input/rakuten-product-images-ml/image_test",
     "/kaggle/input/rakuten-product-images-ml/images/image_test",
 
-    # Older/fallback layouts
+    # Kaggle older/fallback layouts
     "/kaggle/input/rakuten-product-images-ml/streamlit/I12_ConvNeXT/images/image_train",
     "/kaggle/input/rakuten-product-images-ml/streamlit/I12_ConvNeXT/image_train",
     "/kaggle/input/rakuten-product-images-ml/Streamlit/I12_ConvNeXT/images/image_train",
@@ -1111,6 +1114,13 @@ elif page == "5.1 Overview":
 elif page == "5.2 Best model: ConvNeXT-Base — Summary":
     st.title("Rakuten Multimodal Product Data Classification")
     st.header("5.2 Best model: ConvNeXT-Base — Summary")
+    st.markdown(
+        "ConvNeXT-Base (full fine-tuning, TrivialAugmentWide) reached **72.0 % accuracy and 0.692 macro F1** on the 16,984-sample validation set across 27 product classes, "
+        "training for the full 20 epochs without early stopping — suggesting the model was still benefiting from updates at the end of training. "
+        "Class-level performance is highly uneven: collectible cards (F1 = 0.96) and swimming-pool accessories (F1 = 0.88) are near-perfect, "
+        "while board & card games (F1 = 0.40) and toys & plush toys (F1 = 0.47) remain the hardest categories — "
+        "a pattern confirmed by the confusion matrix (5.2.3) and Grad-CAM visualisations (5.2.5), which show the model attends to plausible product regions for correctly classified images."
+    )
     st.write(
         "This chapter presents the saved validation results for the ConvNeXT-Base image model. "
         "The app does not retrain the model and does not load the PyTorch checkpoint unless it is later extended for live inference."
@@ -1365,10 +1375,10 @@ elif page == "6.1 Overview":
         {
             "Model": "CamemBERT (text only)",
             "Approach": "Text branch alone",
-            "Accuracy": "—",
-            "Macro F1": _f(f1_text),
-            "Weighted F1": "—",
-            "Notes": "Best text-only baseline",
+            "Accuracy": "0.8807",
+            "Macro F1": "0.8616",
+            "Weighted F1": "0.8800",
+            "Notes": "Best text-only baseline (T8, 3 epochs, max_len=128)",
         },
         {
             "Model": "ConvNeXt-Base (image only)",
@@ -1591,25 +1601,81 @@ elif page == "6.2.3 Classification Report + Confusion Matrix":
             render_html_table(sum_disp, max_width="900px")
 
     st.subheader("Confusion matrix")
-    st.info(
-        "No confusion matrix file was generated for the fusion models. "
-        "The per-class report above shows the weakest classes: "
-        "1281 Board and card games (F1 = 0.72) and 1180 Collectible board-game figurines (F1 = 0.77), "
-        "which overlap visually and textually with adjacent toy and game categories."
-    )
+    if mm_late_cm_png:
+        st.image(str(mm_late_cm_png), caption="Normalised confusion matrix — Late Fusion (α = 0.55)", use_container_width=True)
+    else:
+        st.warning("confusion_matrix.png not found in the Late Fusion data folder.")
 
 elif page == "6.2.5 Error Analysis":
     st.title("Rakuten Multimodal Product Data Classification")
-    st.header("6.2.5 Error Analysis — Multimodal")
-    st.info(
-        "No validation predictions CSV is available for the multimodal models yet. "
-        "To enable interactive error analysis, generate a val_predictions.csv with columns: "
-        "true_label, pred_label, confidence."
-    )
-    st.write(
-        "The per-class F1 scores in chapter 6.2.3 already indicate which categories are most challenging. "
-        "Class 1281 (Board and card games, F1 = 0.72) and class 1180 (Collectible board-game figurines, "
-        "F1 = 0.77) remain the weakest, likely due to visual and textual overlap with related toy and "
-        "game categories. Class 1300 (Toy cars and models) achieves near-perfect scores (F1 = 0.99), "
-        "consistent with its visually and textually distinct product type."
-    )
+    st.header("6.2.5 Error Analysis — Late Fusion")
+
+    if mm_late_preds.empty:
+        st.warning("No val_predictions.csv found for the Late Fusion model.")
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        total   = len(mm_late_preds)
+        correct = int(mm_late_preds["correct"].sum()) if "correct" in mm_late_preds.columns else 0
+        c1.metric("Validation rows", f"{total:,}")
+        c2.metric("Correct",         f"{correct:,}")
+        c3.metric("Errors",          f"{total - correct:,}")
+        c4.metric("Mean confidence",
+                  f"{mm_late_preds['confidence'].mean():.3f}"
+                  if "confidence" in mm_late_preds.columns else "—")
+
+        filtered = mm_late_preds.copy()
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            view = st.selectbox("Prediction status", ["All", "Only errors", "Only correct"])
+            if "correct" in filtered.columns:
+                if view == "Only errors":
+                    filtered = filtered[~filtered["correct"]]
+                elif view == "Only correct":
+                    filtered = filtered[filtered["correct"]]
+        with col_b:
+            if "true_label" in filtered.columns:
+                classes = ["All"] + sorted(
+                    filtered["true_label"].astype(str).unique().tolist(),
+                    key=lambda x: int(x) if x.isdigit() else x,
+                )
+                true_choice = st.selectbox("True class", classes)
+                if true_choice != "All":
+                    filtered = filtered[filtered["true_label"].astype(str) == true_choice]
+        with col_c:
+            if "pred_label" in filtered.columns:
+                classes = ["All"] + sorted(
+                    filtered["pred_label"].astype(str).unique().tolist(),
+                    key=lambda x: int(x) if x.isdigit() else x,
+                )
+                pred_choice = st.selectbox("Predicted class", classes)
+                if pred_choice != "All":
+                    filtered = filtered[filtered["pred_label"].astype(str) == pred_choice]
+
+        if "confidence" in filtered.columns and not filtered.empty:
+            conf_range = st.slider("Confidence range", 0.0, 1.0, (0.0, 1.0), 0.01)
+            mask = (
+                (filtered["confidence"] >= conf_range[0]) &
+                (filtered["confidence"] <= conf_range[1])
+            ).fillna(False)
+            filtered = filtered[mask]
+
+        sort_options = [
+            c for c in ["confidence", "true_label", "pred_label", "productid", "imageid"]
+            if c in filtered.columns
+        ]
+        if sort_options:
+            sort_col  = st.selectbox("Sort by", sort_options)
+            ascending = st.checkbox("Ascending", value=False)
+            filtered  = filtered.sort_values(sort_col, ascending=ascending)
+
+        st.subheader("Filtered validation predictions")
+        st.dataframe(
+            filtered, hide_index=True, use_container_width=True,
+            height=fit_table_height(filtered, max_height=BIG_TABLE_HEIGHT),
+        )
+        st.download_button(
+            "Download filtered rows as CSV",
+            filtered.to_csv(index=False).encode("utf-8"),
+            "filtered_late_fusion_predictions.csv",
+            "text/csv",
+        )
