@@ -473,7 +473,7 @@ def placeholder_page(title):
 
 def render_prediction_tool():
     """Render the standalone Prediction page inside this custom navigation app."""
-    prediction_page = APP_DIR / "pages" / "6_Prediction.py"
+    prediction_page = APP_DIR /"pages" / "6_Prediction.py"
     if not prediction_page.exists():
         st.error(f"Prediction page not found: {prediction_page}")
         return
@@ -906,7 +906,7 @@ st.markdown(
 # Sidebar navigation: button-style navigation with chapter hierarchy.
 # -------------------------------------------------------------------
 st.sidebar.title("Rakuten Multimodal Product Data Classification")
-st.sidebar.markdown("### Navigation")
+# st.sidebar.markdown("### Navigation")
 
 NAV_LEVELS = {
     "1. Overview": 0,
@@ -1587,6 +1587,11 @@ elif page == "6. Multimodal":
         },
         {
             "Strategy": "Intermediate Fusion",
+            "How it works": "Multiple Combinations of CLIP Base Model, CLIP Vision and CamemBERT Frozen, UnFrozen , with Augmentation and without Augmentation.",
+            "Best Macro F1": f"{mm_inter_meta['best_macro_f1']:.4f}" if mm_inter_meta.get("best_macro_f1") else "—",
+        },
+        {
+            "Strategy": "CLIP Gate Fusion",
             "How it works": "Frozen text and image branches feed into a trained projection head and classifier. The fusion layer learns to combine the two feature streams.",
             "Best Macro F1": f"{mm_inter_meta['best_macro_f1']:.4f}" if mm_inter_meta.get("best_macro_f1") else "—",
         },
@@ -2551,12 +2556,12 @@ elif page == "4.1 Overview":
             """
         )
     st.info("Semantic compression reduces performance for product classification.")
-
+    '''
     st.subheader("Model comparison")
     _img = ION_IMAGE_DIR / "model_comparison.png"
     if _img.exists():
         st.image(str(_img), caption="CamemBERT slightly outperforms TF-IDF, while embeddings lag behind.", use_container_width=True)
-
+    '''
 # =========================
 # 4.2 Text Modeling — Best model
 # =========================
