@@ -1,0 +1,17 @@
+{
+  "model_type": "LogisticRegression_stacking",
+  "macro_f1": 0.9076149845027662,
+  "accuracy": 0.9166862929816297,
+  "multimodal_shape": [
+    16984,
+    27
+  ],
+  "text_shape": [
+    16984,
+    27
+  ],
+  "stacking_feature_shape": [
+    16984,
+    54
+  ]
+}

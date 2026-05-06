@@ -1,0 +1,17 @@
+{
+  "best_val_macro_f1": 0.8801517691476191,
+  "best_epoch_global": 14,
+  "best_stage_name": "stage3_full_unfreeze",
+  "num_classes": 27,
+  "batch_size": 16,
+  "accum_steps": 2,
+  "max_text_len": 128,
+  "label_smoothing": 0.1,
+  "projection_dim": 512,
+  "camembert_id": "camembert-base",
+  "clip_id": "openai/clip-vit-base-patch32",
+  "device": "mps",
+  "best_val_logits_path": "/Users/sumeyraozdemir/Documents/DS_Projects/rakuten-project/Rakuten_Data_Science/outputs/mm_camembert_clip_aug_gatedfusion_unfreeze/best_val_logits.npy",
+  "best_val_gate_weights_path": "/Users/sumeyraozdemir/Documents/DS_Projects/rakuten-project/Rakuten_Data_Science/outputs/mm_camembert_clip_aug_gatedfusion_unfreeze/best_val_gate_weights.npy",
+  "best_val_predictions_path": "/Users/sumeyraozdemir/Documents/DS_Projects/rakuten-project/Rakuten_Data_Science/outputs/mm_camembert_clip_aug_gatedfusion_unfreeze/best_val_predictions.csv"
+}

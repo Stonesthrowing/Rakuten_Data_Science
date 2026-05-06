@@ -1,0 +1,12 @@
+{
+  "best_val_macro_f1": 0.8643647283804169,
+  "best_epoch_global": 10,
+  "best_stage_name": "stage3_full_unfreeze",
+  "num_classes": 27,
+  "batch_size": 16,
+  "accum_steps": 2,
+  "max_text_len": 128,
+  "camembert_id": "camembert-base",
+  "clip_id": "openai/clip-vit-base-patch32",
+  "device": "mps"
+}

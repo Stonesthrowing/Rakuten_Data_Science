@@ -1,0 +1,23 @@
+{
+  "run_name": "model_i13_dinov2_train_aug_frozen",
+  "device": "mps",
+  "dino_model_name": "vit_small_patch14_dinov2",
+  "image_size": 224,
+  "batch_size": 8,
+  "initial_lr": 0.0001,
+  "max_epochs": 3,
+  "early_stopping_patience": 2,
+  "weight_decay": 0.0001,
+  "accum_steps": 1,
+  "num_workers": 0,
+  "num_classes": 27,
+  "train_size": 67932,
+  "val_size": 16984,
+  "best_val_accuracy": 0.6646844088553933,
+  "best_val_macro_f1": 0.6198640935570574,
+  "best_epoch": 3,
+  "total_training_minutes_this_session": 4.231929779052734e-06,
+  "fusion_table_csv": "/Users/sumeyraozdemir/Documents/DS_Projects/rakuten-project/Rakuten_Data_Science/outputs/image_modeling/model_i13_dinov2_train_aug_frozen/val_fusion_table.csv",
+  "logits_npy": "/Users/sumeyraozdemir/Documents/DS_Projects/rakuten-project/Rakuten_Data_Science/outputs/image_modeling/model_i13_dinov2_train_aug_frozen/y_logits.npy",
+  "proba_npy": "/Users/sumeyraozdemir/Documents/DS_Projects/rakuten-project/Rakuten_Data_Science/outputs/image_modeling/model_i13_dinov2_train_aug_frozen/y_proba.npy"
+}
