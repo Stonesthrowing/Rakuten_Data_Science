@@ -24,7 +24,7 @@ MM_LATE_DIR  = DATA_DIR / "Streamlit" / "MM_CamemBERT_ConvNeXtBase_LateFusion"
 MM_INTER_DIR = DATA_DIR / "Streamlit" / "MM_CamemBERT_ConvNeXtBase_IntermediateFusion"
 
 ION_IMAGE_DIR = APP_DIR / "images"
-ION_TRAIN_PATH = APP_DIR.parent / "data" / "raw" / "train_clean.csv"
+ION_TRAIN_PATH = DATA_DIR / "raw" / "train_clean.csv"
 
 # -------------------------------------------------------------------
 # Search paths: local C:\Streamlit first, then the shared Kaggle dataset.
@@ -275,6 +275,103 @@ def category_display(label):
     return f"{key} — {name}" if name else key
 
 
+def render_grouped_html_table(df, group_col, highlight_cols=None, max_width="100%", compact=False):
+    """HTML table where group_col uses rowspan.
+    - Per-group best (by first highlight col): green border on all highlight_cols cells.
+    - Global best row overall: red border on all highlight_cols cells (overrides green).
+    - Last row of each group gets a thicker bottom separator."""
+    if df is None or df.empty:
+        st.info("No table data available.")
+        return
+    if highlight_cols is None:
+        highlight_cols = ["Accuracy", "Macro F1"]
+    highlight_cols = [c for c in highlight_cols if c in df.columns]
+    sort_col = highlight_cols[0] if highlight_cols else None
+
+    font = "1.02rem" if compact else "1.06rem"
+    pad = "0.45rem 0.6rem" if compact else "0.62rem 0.75rem"
+    other_cols = [c for c in df.columns if c != group_col]
+    header = f"<th>{escape(str(group_col))}</th>" + "".join(f"<th>{escape(str(c))}</th>" for c in other_cols)
+
+    seen = []
+    for v in df[group_col]:
+        if v not in seen:
+            seen.append(v)
+
+    def _try_float(v):
+        try:
+            return float(v)
+        except (ValueError, TypeError):
+            return None
+
+    # Per-group best local index
+    best_local = {}
+    global_best_val = None
+    global_best_key = None  # (group_val, local_i)
+    if sort_col:
+        for gv in seen:
+            grp = df[df[group_col] == gv]
+            pairs = [(_try_float(row[sort_col]), i) for i, (_, row) in enumerate(grp.iterrows())]
+            numeric = [(v, i) for v, i in pairs if v is not None]
+            if numeric:
+                best_v, best_i = max(numeric, key=lambda x: x[0])
+                best_local[gv] = best_i
+                if global_best_val is None or best_v > global_best_val:
+                    global_best_val = best_v
+                    global_best_key = (gv, best_i)
+
+    last_group = seen[-1]
+    body_rows = []
+    for group_val in seen:
+        group_rows = df[df[group_col] == group_val]
+        n = len(group_rows)
+        is_last_group = (group_val == last_group)
+        for i, (_, row) in enumerate(group_rows.iterrows()):
+            is_last_row = (i == n - 1)
+            is_group_best = (best_local.get(group_val) == i)
+            is_global_best = (global_best_key == (group_val, i))
+            sep = "border-bottom:2.5px solid #9ca3af;" if (is_last_row and not is_last_group) else ""
+            cells = ""
+            if i == 0:
+                cells += (
+                    f'<td rowspan="{n}" style="font-weight:700; background:#eef2ff; '
+                    f'text-align:center; vertical-align:middle; border:1px solid #c7d2fe; '
+                    f'padding:{pad}; font-size:{font}; color:#3730a3; {sep}">'
+                    f'{escape(str(group_val))}</td>'
+                )
+            for c in other_cols:
+                cell_val = _format_cell(row[c])
+                style = sep
+                if c in highlight_cols:
+                    if is_global_best:
+                        style += "font-weight:700; border:2px solid #dc2626; color:#991b1b;"
+                    elif is_group_best:
+                        style += "font-weight:700; border:2px solid #059669; color:#065f46;"
+                cells += f'<td style="{style}">{cell_val}</td>' if style else f"<td>{cell_val}</td>"
+            body_rows.append(f"<tr>{cells}</tr>")
+
+    html = f'''
+    <div class="table-scroll" style="max-width:{max_width}; overflow-x:auto; margin:0.35rem 0 1.0rem 0;">
+      <table class="report-table" style="width:100%; border-collapse:collapse;">
+        <thead><tr>{header}</tr></thead>
+        <tbody>{''.join(body_rows)}</tbody>
+      </table>
+    </div>
+    <style>
+    .report-table th {{
+        background:#f7f8fa; color:#4b5563; font-weight:600; text-align:left;
+        border:1px solid #e5e7eb; padding:{pad}; font-size:{font}; line-height:1.35;
+        vertical-align:top; white-space:normal;
+    }}
+    .report-table td {{
+        border:1px solid #e5e7eb; padding:{pad}; font-size:{font}; line-height:1.35;
+        vertical-align:top; white-space:normal; color:#262730;
+    }}
+    </style>
+    '''
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def render_best_model_card(row):
     """Large, readable card for the best image-only model instead of a small one-row dataframe."""
     def val(name):
@@ -321,6 +418,27 @@ IMAGE_MODEL_RESULTS = [
     {"Model": "Model_I12_ConvNeXt_Base_ModerateAug_Full", "Family": "ConvNeXt", "Image size": "224", "Training strategy": "Full unfreeze", "Augmentation": "Moderate", "Accuracy": 0.7200, "Macro F1": 0.6924, "Weighted F1": 0.7200, "Best epoch": "20", "Hardware / time": "160.82 min; RTX 5070 Ti"},
     {"Model": "Model_I13_DINOv2_TrainAug_Frozen", "Family": "DINOv2", "Image size": "224", "Training strategy": "Frozen pretrained backbone", "Augmentation": "Training transform from timm", "Accuracy": 0.6647, "Macro F1": 0.6199, "Weighted F1": None, "Best epoch": "-", "Hardware / time": "~60-62 min/epoch; Apple Silicon MPS"},
 ]
+
+IMAGE_MODEL_LABELS = {
+    # CNN baseline — differ by input size and augmentation
+    "Model_I1_CNN128_NoAug_FromScratch":        "128 px · no aug",
+    "Model_I2_CNN128_ModerateAug_FromScratch":  "128 px · aug",
+    "Model_I3_CNN256_NoAug_FromScratch":        "256 px · no aug",
+    # ResNet — differ by training strategy / backbone depth
+    "Model_I5_ResNet50_NoAug_Frozen":           "Frozen · no aug",
+    "Model_I6_ResNet50_ModerateAug_Partial":    "Partial unfreeze",
+    "Model_I7_ResNet50_ModerateAug_Full":       "Full unfreeze",
+    "Model_I8_ResNet50_ModerateAug_FromScratch":"From scratch",
+    "Model_I8b_ResNet101_NoAug_Frozen":         "ResNet101 · frozen",
+    # ConvNeXt — differ by model variant
+    "Model_I9_ConvNeXt_Tiny_ModerateAug_Full":  "Tiny variant",
+    "Model_I12_ConvNeXt_Base_ModerateAug_Full": "Base variant",
+    # EfficientNet — differ by augmentation
+    "Model_I10_EfficientNetB0_NoAug_Partial":   "No aug",
+    "Model_I11_EfficientNetB0_ModerateAug_Partial": "Moderate aug",
+    # DINOv2 — single model
+    "Model_I13_DINOv2_TrainAug_Frozen":         "Frozen backbone",
+}
 
 # -------------------------------------------------------------------
 
@@ -910,13 +1028,17 @@ st.sidebar.title("Rakuten Multimodal Product Data Classification")
 
 NAV_LEVELS = {
     "1. Overview": 0,
+    "1.1 Workflow": 1,
     "2. Data Exploration": 0,
     "2.1 Text": 1,
+    "2.11 Vocabulary": 2,
     "2.2 Image": 1,
     "3. Preprocessing": 0,
+    "3.1 Text Preprocessing": 1,
     "4. Text Modeling": 0,
     "4.1 Overview": 1,
     "4.2 Best model": 1,
+    "4.21 CamemBERT vs TF-IDF" : 2,
     "5. Image Modeling": 0,
     "5.1 CNN Models": 1,
     "5.1 Conclusion": 1,
@@ -934,16 +1056,21 @@ NAV_LEVELS = {
     "6.2.5 Error Analysis": 2,
     "6.1 Conclusion": 1,
     "7. Prediction Tool": 0,
+    "8. Conclusions" : 0,
 }
 NAV_DISPLAY = {
     "1. Overview": "Overview",
+    "1.1 Workflow": "Workflow",
     "2. Data Exploration": "Data Exploration",
     "2.1 Text": "Text",
+    "2.11 Vocabulary": "Vocabulary",
     "2.2 Image": "Image",
     "3. Preprocessing": "Preprocessing",
+    "3.1 Text Preprocessing": "Text",
     "4. Text Modeling": "Text Modeling",
     "4.1 Overview": "Overview Text models",
     "4.2 Best model": "Best model",
+    "4.21 CamemBERT vs TF-IDF" : "vs TF-IDF",
     "5. Image Modeling": "Image Modeling",
     "5.1 CNN Models": "CNN Models",
     "5.1 Conclusion": "Conclusion Image models",
@@ -961,6 +1088,7 @@ NAV_DISPLAY = {
     "6.2.5 Error Analysis": "Error Analysis Multimodal model",
     "6.1 Conclusion": "Conclusion Multimodal models",
     "7. Prediction Tool": "Prediction Tool",
+    "8. Conclusions" : "Conclusions",
 }
 NAV_ITEMS = list(NAV_LEVELS.keys())
 DEFAULT_PAGE = "1. Overview"
@@ -1123,44 +1251,17 @@ image_dirs = [x for x in image_dir_text.splitlines() if x.strip()]
 # -------------------------------------------------------------------
 # Blank report chapters
 # -------------------------------------------------------------------
-if page not in [
-    "1. Overview",
-    "2. Data Exploration",
-    "2.1 Text",
-    "2.2 Image",
-    "3. Preprocessing",
-    "4. Text Modeling",
-    "4.1 Overview",
-    "4.2 Best model",
-    "5. Image Modeling",
-    "5.1 CNN Models",
-    "5.1 Conclusion",
-    "5.2 Best model: ConvNeXT-Base — Summary",
-    "5.2.2 Training history",
-    "5.2.3 Classification Report + Confusion Matrix",
-    "5.2.5 Error Analysis + Interpretability",
-    "5.2.6 Setup Check",
-    "6. Multimodal",
-    "6.1.1 Simple Fusion",
-    "6.1.2 CLIP Models",
-    "6.2 Best model — Summary",
-    "6.2.2 Training history",
-    "6.2.3 Classification Report + Confusion Matrix",
-    "6.2.5 Error Analysis",
-    "6.1 Conclusion",
-    "7. Prediction Tool",
-        "7. Prediction Tool",
-]:
+if page not in NAV_ITEMS :
     placeholder_page(page)
 
 elif page == "1. Overview":
-    st.title("Rakuten Multimodal Product Data Classification")
-    st.header("1. Overview")
+    st.header("1. Project overview")
 
     st.write(
         """
-        This project focuses on classifying Rakuten marketplace products into one of 27
-        categories (`prdtypecode`) using textual and visual information.
+        This project addresses automatic product classification for the Rakuten marketplace.
+        Each product must be assigned to one of 27 product categories (`prdtypecode`) using
+        both textual and visual information.
         """
     )
 
@@ -1170,79 +1271,191 @@ elif page == "1. Overview":
     col3.metric("Test samples", "13 812")
     col4.metric("Missing descriptions", "~35%")
 
-    st.subheader("Dataset structure")
-    st.write("Each product is described by four fields")
+    st.subheader("Business motivation")
+
+    st.write(
+        """
+        Product category prediction is a key task for marketplace platforms.
+        Reliable classification improves product search, filtering, recommendation quality,
+        catalogue consistency, and user experience.
+        """
+    )
+
+    st.subheader("Input data")
+
     c1, c2 = st.columns(2)
+
     with c1:
-        st.write("- **designation**: product title")
-        st.write("- **image**: product image")
+        st.markdown(
+            """
+            **Textual information**
+            - `designation`: product title
+            - `description`: optional product description
+             """
+        )
+
     with c2:
-        st.write("- **description**: detailed text")
-        st.write("- **prdtypecode**: category label")
+        st.markdown(
+            """
+            **Visual information**
+            - Product images stored separately
+            - Linked through `imageid` and `productid`
+            """
+        )
 
-    st.info(
-        "The objective is to predict the product category (`prdtypecode`) for unseen test products "
-        "using the available text and image information."
+    st.success(
+        """
+        The objective is to build a robust classification pipeline that predicts the correct
+        product category for unseen products using the available title, description, and image.
+        """
     )
 
-    st.subheader("Multimodal data")
+elif page == "1.1 Workflow":
+
+    st.header("Modeling strategy")
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+        st.markdown(
+            """
+            **1. Text models**
+            - Start with TF-IDF baselines
+            - Compare classical classifiers
+            - Test sentence embeddings
+            - Fine-tune CamemBERT
+            """
+        )
+
+    with m2:
+        st.markdown(
+            """
+            **2. Image models**
+            - Start with a simple CNN baseline
+            - Move to transfer learning
+            - Compare stronger architectures
+            - Use GradCAM for visual checks
+            """
+        )
+
+    with m3:
+        st.markdown(
+            """
+            **3. Multimodal models**
+            - Combine text and image information
+            - Compare early and late fusion
+            - Test CLIP-based representations
+            - Focus on robust final prediction
+            """
+        )
+
+    st.subheader("Evaluation metric")
+
     st.write(
         """
-        The dataset combines:
-        - textual information (title and description)
-        - visual information (product images)
-
-        Images are stored separately and linked using `imageid` and `productid`.
+        The main evaluation metric is **macro F1-score**. This is more appropriate than
+        accuracy because the dataset contains 27 product categories and the classes are
+        not equally represented.
         """
     )
 
-    st.subheader("Key challenges")
-    st.write(
+    col_m1, col_m2 = st.columns(2)
+
+    with col_m1:
+        st.markdown(
+            """
+            **Why not accuracy only?**
+            - Accuracy can be dominated by frequent classes
+            - Rare categories may perform poorly without strongly affecting accuracy
+            - A high accuracy score can hide weak per-class performance
+            """
+        )
+
+    with col_m2:
+        st.markdown(
+            """
+            **Why macro F1?**
+            - Computes F1-score independently for each class
+            - Gives the same importance to each product category
+            - Better reflects performance on both frequent and rare classes
+            """
+        )
+
+    st.success(
         """
-        - Missing descriptions (~35%) → models must rely heavily on titles
-        - 27 classes → multi-class classification problem
-        - Heterogeneous products → high variability in text and images
-        - Some categories are visually similar but textually distinct (and vice versa)
+        Macro F1 is therefore used as the main metric because the goal is not only to
+        classify common products correctly, but to obtain balanced performance across
+        all 27 product categories.
         """
     )
-
-    st.subheader("Report structure")
-    overview_rows = pd.DataFrame([
-        {"Chapter": "2", "Content": "Data exploration — class distribution, text lengths, image properties, and data quality."},
-        {"Chapter": "3", "Content": "Text preprocessing — cleaning pipeline, tokenization, and model-specific processing."},
-        {"Chapter": "4", "Content": "Text modeling — TF-IDF baseline, sentence embeddings, and CamemBERT best model."},
-        {"Chapter": "5", "Content": "Image modeling — CNN baselines, ResNet, ConvNeXT-Base, and GradCAM interpretability."},
-        {"Chapter": "6", "Content": "Multimodal modeling — simple fusion, CLIP models, gated fusion, and late fusion."},
-        {"Chapter": "7", "Content": "Prediction tool — interactive product category prediction."},
-    ])
-    render_html_table(overview_rows, max_width="900px")
 
 elif page == "5. Image Modeling":
     st.title("Rakuten Multimodal Product Data Classification")
     st.header("5. Image Modeling")
     st.write(
-        "The image-modeling stage was designed as a structured progression from simple convolutional baselines "
-        "to transfer learning and then to stronger pretrained architectures. This made it possible to isolate the "
-        "effects of augmentation, input resolution, pretrained representations, fine-tuning depth, and model capacity."
+        "Classifying Rakuten product listings by image alone is harder than it looks: the same category "
+        "can contain wildly different visual styles, while different categories sometimes share packaging or shape. "
+        "To understand what image models can and cannot contribute, we ran a structured set of experiments — "
+        "starting from scratch and progressively adding pretrained knowledge, better architectures, and more "
+        "careful training strategies."
     )
+
     st.subheader("Modeling approach")
     approach_rows = pd.DataFrame([
-        {"Step": "1", "Area": "CNN baselines from scratch", "Purpose": "Establish an image-only baseline without pretrained features."},
-        {"Step": "2", "Area": "Resolution and augmentation checks", "Purpose": "Test whether larger images or moderate augmentation improve generalization."},
-        {"Step": "3", "Area": "ResNet transfer learning", "Purpose": "Compare frozen, partial, full fine-tuning, and from-scratch ResNet variants."},
-        {"Step": "4", "Area": "Additional pretrained architectures", "Purpose": "Evaluate EfficientNet, ConvNeXt, and DINOv2 as stronger image backbones."},
-        {"Step": "5", "Area": "Best image branch selection", "Purpose": "Select the strongest image model for later multimodal fusion."},
+        {"Step": "1", "Area": "CNN baselines from scratch", "Purpose": "Establish a lower-bound reference trained purely on this dataset, with no pretrained features."},
+        {"Step": "2", "Area": "ResNet transfer learning", "Purpose": "Bring in ImageNet-pretrained representations and compare frozen vs. fine-tuned strategies."},
+        {"Step": "3", "Area": "Stronger pretrained architectures", "Purpose": "Evaluate EfficientNet, ConvNeXt, and DINOv2 as higher-capacity backbones."},
+        {"Step": "4", "Area": "Best image branch selection", "Purpose": "Pick the strongest image model to carry forward into multimodal fusion."},
     ])
     render_html_table(approach_rows, max_width="900px")
+
+    st.subheader("Data augmentation")
+    st.write(
+        "Data augmentation is a training-time technique that creates synthetic variations of each image on the fly — "
+        "flipping it horizontally, cropping a random region, slightly shifting brightness or contrast — so the model "
+        "sees a wider range of examples without needing to collect more data. The goal is to teach the model "
+        "to recognise the *class*, not memorise the exact pixel arrangement of a specific photo."
+    )
+    st.write(
+        "Before each training batch, images pass through a transform pipeline:"
+    )
+    render_html_table(pd.DataFrame([
+        {"Stage": "1. Resize / crop", "What happens": "Image is resized to the model's input size (128², 224², or 256²). With augmentation, a random region is cropped first so the model sees different framing each epoch."},
+        {"Stage": "2. Geometric transforms", "What happens": "Random horizontal flips and, in stronger setups, small rotations or translations. These simulate the natural variation in how products are photographed."},
+        {"Stage": "3. Color transforms", "What happens": "Mild adjustments to brightness, contrast, saturation, or hue. TrivialAugmentWide (used in ConvNeXt runs) selects one random policy per image."},
+        {"Stage": "4. Normalise", "What happens": "Pixel values are scaled to the range expected by the backbone (ImageNet mean/std for pretrained models)."},
+    ]), max_width="950px")
+
+    st.subheader("Why we chose moderate augmentation")
+    st.write(
+        "We tested a stronger augmentation setup early on. Validation accuracy collapsed to ~0.21 and training "
+        "stopped after three epochs — a clear sign of over-distortion. "
+        "Rakuten product images are mostly catalog-style: upright, centered, and photographed under controlled conditions. "
+        "Aggressive geometric transforms produce unrealistic examples that destroy the stable visual cues "
+        "(shape, packaging layout, colour scheme) the model depends on. "
+        "Moderate augmentation — random crop, horizontal flip, mild colour jitter — adds just enough variety "
+        "to reduce overfitting without stripping the signal."
+    )
+    render_html_table(pd.DataFrame([
+        {"Level": "No augmentation", "Transforms applied": "Resize only", "Used in": "I1, I3, I5, I8b, I10"},
+        {"Level": "Moderate augmentation", "Transforms applied": "Random crop · horizontal flip · mild colour jitter", "Used in": "I2, I6, I7, I8, I9, I11, I12"},
+        {"Level": "timm training transform", "Transforms applied": "DINOv2 standard pipeline — timm create_transform(is_training=True)", "Used in": "I13"},
+        {"Level": "Heavy augmentation", "Transforms applied": "Stronger geometric / color distortion — observed to cause underfitting in small scratch CNNs", "Used in": "—"},
+    ]), max_width="860px")
+
+    st.write(
+        "With that foundation in place, the next pages walk through each model family. "
+        "We start from the simplest possible baseline: a convolutional network trained entirely from scratch, "
+        "with no pretrained weights and no augmentation."
+    )
 
 elif page == "5.1 CNN Models":
     st.title("Rakuten Multimodal Product Data Classification")
     st.header("5.1 CNN Models")
     st.write(
-        "The CNN baseline models were the starting point of the image-modeling stage. "
-        "All three models were trained entirely from scratch — without any pretrained weights — "
-        "using a custom convolutional architecture. The goal was to establish a lower-bound reference "
-        "that later transfer-learning models could be compared against."
+        "All three CNN baselines use the same custom architecture, trained on this dataset alone — "
+        "no ImageNet weights, no pretrained representations. The experiments vary input resolution (128 vs. 256 px) "
+        "and augmentation to understand what a fully scratch-trained model can learn."
     )
 
     st.subheader("Architecture")
@@ -1262,9 +1475,32 @@ elif page == "5.1 CNN Models":
     ])
     render_html_table(arch_df, max_width="860px")
 
-    st.subheader("Trained models")
+    st.subheader("Results")
     cnn_df = pd.DataFrame([r for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"])
-    render_html_table(cnn_df.replace({None: "—"}))
+    cnn_labels = [IMAGE_MODEL_LABELS.get(r["Model"], r["Model"]) for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"]
+    cnn_acc = [float(r["Accuracy"]) for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"]
+    cnn_f1  = [float(r["Macro F1"])  for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"]
+    x = range(len(cnn_labels))
+    fig, ax = plt.subplots(figsize=(4.5, 2.6))
+    bars_acc = ax.bar([i - 0.18 for i in x], cnn_acc, width=0.32, label="Accuracy", color="#6366f1")
+    bars_f1  = ax.bar([i + 0.18 for i in x], cnn_f1,  width=0.32, label="Macro F1",  color="#a5b4fc")
+    for bar in bars_acc:
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.004,
+                f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=6.5, color="#3730a3")
+    for bar in bars_f1:
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.004,
+                f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=6.5, color="#4b5563")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(cnn_labels, fontsize=7)
+    ax.set_ylim(0.45, 0.62)
+    ax.set_ylabel("Score", fontsize=7)
+    ax.legend(fontsize=7)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=False)
+    plt.close(fig)
 
     st.subheader("Training setup")
     setup_df = pd.DataFrame([
@@ -1293,7 +1529,7 @@ elif page == "5.1 CNN Models":
         "rather than improving generalization."
     )
 
-    st.subheader("Why CNN baselines were superseded")
+    st.subheader("Key takeaways")
     st.markdown(
         """
         - Training from scratch limits what the model can learn from the limited number of images per class.
@@ -1301,6 +1537,13 @@ elif page == "5.1 CNN Models":
         - Pretrained features from ImageNet-scale training provide richer visual representations than a network can learn from this dataset alone.
         - The CNN experiments confirm that transfer learning is the right direction, motivating the ResNet and ConvNeXt experiments that follow.
         """
+    )
+    st.write(
+        "The CNN experiments established one clear finding: learning visual features from scratch is not competitive on this dataset. "
+        "The best CNN (I3, macro F1 0.509) falls well below a frozen ResNet50 that was never fine-tuned on product images at all (I5, macro F1 0.554) — "
+        "meaning a backbone trained only on ImageNet already outperforms a network trained directly on Rakuten data. "
+        "The bottleneck is data volume: with limited examples per class, a scratch-trained network has to invent visual concepts rather than refine existing ones. "
+        "Transfer learning — bringing in representations already built from millions of images, then adapting them to Rakuten products — was the logical next step."
     )
 
 elif page == "5.1 Conclusion":
@@ -1312,8 +1555,12 @@ elif page == "5.1 Conclusion":
     )
     results_df = pd.DataFrame(IMAGE_MODEL_RESULTS)
     display_df = results_df.copy().replace({None: "—"})
+    display_df["Variant"] = display_df["Model"].map(IMAGE_MODEL_LABELS).fillna(display_df["Model"])
+    grouped_cols = ["Family", "Variant", "Image size", "Training strategy", "Augmentation",
+                    "Accuracy", "Macro F1", "Weighted F1", "Best epoch", "Hardware / time"]
+    display_df = display_df[[c for c in grouped_cols if c in display_df.columns]]
     st.subheader("Image model comparison")
-    render_html_table(display_df)
+    render_grouped_html_table(display_df, group_col="Family")
     st.subheader("Best image-only model")
     best_rows = results_df[results_df["Model"].astype(str).str.contains("I12_ConvNeXt_Base", na=False)]
     if not best_rows.empty:
@@ -2112,24 +2359,7 @@ elif page == "6.2.5 Error Analysis":
 # 2. Data Exploration (parent)
 # =========================
 elif page == "2. Data Exploration":
-    st.title("Rakuten Multimodal Product Data Classification")
-    st.header("2. Data Exploration")
-    st.write(
-        "Key dataset characteristics that influenced preprocessing, modeling, and evaluation. "
-        "Use the navigation on the left to explore text and image data separately."
-    )
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Categories", "27")
-    col2.metric("Train samples", "84 916")
-    col3.metric("Test samples", "13 812")
-    col4.metric("Missing descriptions", "~35%")
-
-# =========================
-# 2.1 Text Exploration
-# =========================
-elif page == "2.1 Text":
-    st.title("Rakuten Multimodal Product Data Classification")
-    st.header("2.1 Text Exploration")
+    st.title("2 Data Exploration")
 
     st.write(
         """
@@ -2142,20 +2372,41 @@ elif page == "2.1 Text":
     col1.metric("Categories", "27")
     col2.metric("Largest class", ">10 000")
     col3.metric("Smallest classes", "~700–800")
-    st.write(
-        """
-        - Moderate class imbalance across product categories
-        - Even the smallest classes contain several hundred samples
-        - Macro F1 is important because accuracy alone can hide weak minority-class performance
-        """
-    )
-    _img = ION_IMAGE_DIR / "category_balance.png"
-    if _img.exists():
-        st.image(str(_img), caption="Category distribution: largest vs smallest classes", use_container_width=True)
+    col_text, col_img = st.columns([1, 2])
 
-    st.subheader("Text fields")
-    col1, col2 = st.columns(2)
-    with col1:
+    with col_text:
+        st.write(
+            """
+            - The dataset shows a **moderate but clear class imbalance**
+            - The largest class, `2583`, contains **10,209 samples** and represents about **12%** of the training set
+            - Several other large classes contain around **5,000 samples** each
+            - The median class size is **2,671 samples**
+            - The smallest classes still contain around **760–870 samples**
+            - This means the dataset is imbalanced, but not extremely sparse
+            - Accuracy alone could be biased toward the largest categories
+            - **Macro F1** is important because it gives equal weight to each class, including smaller categories
+            """
+        )
+
+    with col_img:
+        _img = ION_IMAGE_DIR / "category_balance.png"
+        if _img.exists():
+            st.image(
+                str(_img),
+                caption="Category distribution: largest vs smallest classes",
+                width="stretch"
+            )
+
+# =========================
+# 2.1 Text Exploration
+# =========================
+elif page == "2.1 Text":
+    st.header("2.1 Text Exploration")
+
+    col_T10, col_T11 = st.columns([1, 3.5])
+
+    with col_T10:
+        st.subheader("Text fields")
         st.write(
             """
             **Designation**
@@ -2165,30 +2416,28 @@ elif page == "2.1 Text":
             - Strong category signal
             """
         )
-    with col2:
+
         st.write(
             """
             **Description**
             - ~35% missing
             - Longer and more variable
+            - Very long descriptions often contain duplicated content
             - Adds product attributes and context
             """
         )
 
-    st.subheader("Text length")
-    col1, col2 = st.columns(2)
-    col1.metric("Avg title length", "~11 words")
-    col2.metric("Avg description length", "~95 words")
-    st.write(
-        """
-        - Titles are compact and stable
-        - Descriptions are longer, skewed, and sometimes noisy
-        - Very long descriptions often contain duplicated content
-        """
-    )
-    _img = ION_IMAGE_DIR / "text_length.png"
-    if _img.exists():
-        st.image(str(_img), caption="Titles are short and consistent; descriptions are longer, variable, and often missing", use_container_width=True)
+
+    with col_T11:
+        _img = ION_IMAGE_DIR / "text_length.png"
+        if _img.exists():
+            st.image(str(_img),
+                     caption="Titles are short and consistent; descriptions are longer, variable, and often missing",
+                     width="stretch")
+# =========================
+# 2.11 Vocabulary
+# =========================
+elif page == "2.11 Vocabulary":
 
     st.subheader("Data quality")
     col1, col2, col3 = st.columns(3)
@@ -2206,12 +2455,19 @@ elif page == "2.1 Text":
     col1, col2 = st.columns(2)
     col1.metric("Title vocabulary", "~82k tokens")
     col2.metric("Description vocabulary", "~137k tokens")
-    st.write(
-        """
-        - Titles often contain category-defining product keywords
-        - Descriptions mostly add attributes such as size, color, material, and condition
-        """
-    )
+    with col1 :
+        st.write(
+            """
+            - Titles often contain category-defining product keywords
+            """
+        )
+
+    with col2 :
+        st.write(
+            """
+            - Descriptions mostly add attributes such as size, color, material, and condition
+            """
+        )
     _img = ION_IMAGE_DIR / "token_comparison.png"
     if _img.exists():
         st.image(
@@ -2220,12 +2476,10 @@ elif page == "2.1 Text":
             use_container_width=True
         )
 
-    st.subheader("Key takeaways")
     st.success(
         """
         Titles are the strongest text feature.  \n
         Descriptions provide useful but noisier context.  \n
-        Class imbalance makes macro F1 more informative than accuracy alone.
         """
     )
 
@@ -2233,38 +2487,40 @@ elif page == "2.1 Text":
 # 2.2 Image Exploration
 # =========================
 elif page == "2.2 Image":
-    st.title("Rakuten Multimodal Product Data Classification")
     st.header("2.2 Image Exploration")
 
     st.subheader("Dataset overview")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total images", "98 728")
     col2.metric("Train images", "84 916")
     col3.metric("Test images", "13 812")
-    col4, col5 = st.columns(2)
     col4.metric("Disk size", "2.44 GB")
     col5.metric("Missing images", "0%")
+
     st.write("Each product is associated with one image, linked via `imageid` and `productid`.")
 
-    st.subheader("Image properties")
-    st.write(
-        """
-        - format: JPG (standardized across dataset)
-        - resolution: 500 × 500 pixels
-        - color depth: 24-bit
-        - resolution: 96 dpi
+    col_T20, col_T21 = st.columns(2)
+    with col_T20 :
+        st.subheader("Image properties")
+        st.write(
+            """
+            - format: JPG (standardized across dataset)
+            - dimension : 500 × 500 pixels
+            - color depth: 24-bit
+            - resolution: 96 dpi
+            """
+        )
 
-        All images follow a consistent format and size.
-        """
-    )
+    with col_T21 :
 
-    st.subheader("Data quality")
-    st.write(
-        """
-        - images are of good quality
-        - certain categories are visually similar
-        """
-    )
+        st.subheader("Data quality")
+        st.write(
+            """
+            - images are of good quality
+            - all images follow a consistent format and size.
+            - certain categories are visually similar
+            """
+        )
 
     st.subheader("Sample products")
     sample = get_ion_dataset_examples()
@@ -2290,11 +2546,10 @@ elif page == "2.2 Image":
                 st.write(f"**Description:**  \n {desc}")
             st.divider()
 
-    st.subheader("Key takeaway")
-    st.write(
+    st.success(
         """
         Images provide complementary information to text, but their variability and
-        inconsistent quality make standalone image classification more challenging.
+        makes standalone image classification more challenging.
         """
     )
 
@@ -2302,7 +2557,6 @@ elif page == "2.2 Image":
 # 3. Preprocessing
 # =========================
 elif page == "3. Preprocessing":
-    st.title("Rakuten Multimodal Product Data Classification")
     st.header("3. Text Preprocessing")
 
     st.write(
@@ -2336,18 +2590,6 @@ elif page == "3. Preprocessing":
             """
         )
 
-    st.subheader("Handling missing data")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(
-            """
-            - product titles are always available
-            - descriptions are missing in ~35% of cases
-            """
-        )
-    with col2:
-        st.markdown("- models must remain robust when description is absent")
-
     st.subheader("Numeric information")
     col_text, col_plot = st.columns([1.6, 0.9])
     with col_text:
@@ -2371,17 +2613,18 @@ elif page == "3. Preprocessing":
         if _img.exists():
             st.image(str(_img), caption="Share of numeric tokens in titles and descriptions.", width=380)
 
+# =========================
+# 3.1  Text Preprocessing
+# =========================
+elif page == "3.1 Text Preprocessing":
     st.subheader("Description deduplication")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("~1.5% of descriptions contain repeated text blocks that artificially inflate length.")
-    with col2:
-        st.markdown(
-            """
-            A preprocessing step removes consecutive duplicated segments while preserving
-            the original content.
-            """
-        )
+    st.markdown("~1.5% of descriptions contain repeated text blocks that artificially inflate length.")
+    st.markdown(
+        """
+        A preprocessing step removes consecutive duplicated segments while preserving
+        the original content.
+        """
+    )
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("- reduces extreme outliers")
@@ -2390,9 +2633,9 @@ elif page == "3. Preprocessing":
     with col3:
         st.markdown("- improves overall data quality")
 
-    st.subheader("Tokenization")
-    col1, col2 = st.columns([1.0, 1.35])
-    with col1:
+    col_T30, col_T31 = st.columns([1, 2])
+    with col_T30 :
+        st.subheader("Tokenization")
         st.markdown(
             """
             After cleaning, text is tokenized to enable:
@@ -2401,10 +2644,12 @@ elif page == "3. Preprocessing":
             - input formatting for neural models
             """
         )
-    with col2:
+    with col_T31:
         _img = ION_IMAGE_DIR / "tokenization_example.png"
         if _img.exists():
-            st.image(str(_img), caption="Example transformation from raw product title to tokenized input.", use_container_width=True)
+            st.image(str(_img),
+                     caption="Example transformation from raw product title to tokenized input.",
+                     width="stretch")
 
     st.subheader("Model-specific processing")
     st.write("Different models require different preprocessing strategies:")
@@ -2432,63 +2677,63 @@ elif page == "3. Preprocessing":
             """
         )
 
-    st.subheader("Key takeaway")
     st.success("Preprocessing removes noise while preserving informative signals.")
 
 # =========================
 # 4. Text Modeling (parent)
 # =========================
 elif page == "4. Text Modeling":
-    st.title("Rakuten Multimodal Product Data Classification")
-    st.header("4. Text Modeling")
-    st.write(
-        "Text-only models form the baseline before multimodal fusion. "
-        "Use the navigation to explore the modeling overview and the best model."
-    )
-    approach_rows = pd.DataFrame([
-        {"Step": "1", "Approach": "TF-IDF + LinearSVC", "Goal": "Strong keyword-based baseline"},
-        {"Step": "2", "Approach": "Sentence embeddings (MiniLM)", "Goal": "Semantic representation"},
-        {"Step": "3", "Approach": "CamemBERT fine-tuning", "Goal": "Contextual French-language model"},
-    ])
-    render_html_table(approach_rows, max_width="800px")
-
-# =========================
-# 4.1 Text Modeling — Overview
-# =========================
-elif page == "4.1 Overview":
-    st.title("Rakuten Multimodal Product Data Classification")
     st.header("4.1 Text Modeling Overview")
-    st.caption("Establishing a strong text-only baseline before multimodal models.")
 
     st.subheader("Key questions")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(
             """
-            - which text source matters most?
-            - do bigrams improve performance?
-            """
+            <ul>
+                <li><span style="color:#5B8DB8;">which text source matters most?</span></li>
+                <li><span style="color:#E69F56;">do bigrams improve performance?</span></li>
+            </ul>
+            """,
+            unsafe_allow_html=True
         )
     with col2:
         st.markdown(
             """
-            - should numeric tokens be kept?
-            - which classifier works best?
-            """
+            <ul>
+                <li><span style="color:#6FA36F;">should numeric tokens be kept?</span></li>
+                <li><span style="color:#8E7BBE;">which classifier works best?</span></li>
+            </ul>
+            """,
+            unsafe_allow_html=True
         )
 
     st.subheader("TF-IDF results")
     col1, col2 = st.columns(2)
     col1.metric("Accuracy", "0.81")
     col2.metric("Macro F1", "0.79")
-    st.write(
-        """
-        - combining designation + description outperforms either field alone
-        - bigrams add a modest improvement over unigrams
-        - numeric tokens are slightly helpful
-        - LinearSVC outperforms Logistic Regression
-        """
-    )
+
+    with col1 :
+        st.write(
+            """
+            <ul>
+                <li><span style="color:#5B8DB8;">combining designation + description outperforms either field alone</span></li>
+                <li><span style="color:#E69F56;">bigrams add a modest improvement over unigrams</span></li>
+            </ul>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        st.write(
+            """
+            <ul>
+                <li><span style="color:#6FA36F;">numeric tokens are slightly helpful</span></li>
+                <li><span style="color:#8E7BBE;">6 classifiers checked. LinearSVC slightly outperforms Logistic Regression</span></li>
+            </ul>
+            """,
+            unsafe_allow_html=True
+        )
 
     st.subheader("Best TF-IDF configuration")
     col1, col2, col3 = st.columns(3)
@@ -2497,152 +2742,103 @@ elif page == "4.1 Overview":
     col3.metric("Numeric tokens", "Kept")
     st.success("Strong, fast, and interpretable baseline.")
 
-    st.subheader("Key findings")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(
-            """
-            - combining text fields helps
-            - bigrams > unigrams
-            - numeric tokens are useful
-            """
-        )
-    with col2:
-        st.markdown(
-            """
-            - LinearSVC performs best
-            - short texts are harder
-            - errors in similar categories
-            """
-        )
 
-    st.subheader("Beyond TF-IDF")
-    col1, col2, col3 = st.columns(3)
-    with col1:
+# =========================
+# 4.1 Text Modeling — Overview
+# =========================
+elif page == "4.1 Overview":
+    st.subheader("Model comparison")
+    col_T40, col_T41= st.columns([1, 2])
+
+    with col_T40:
         st.markdown(
             """
             **TF-IDF**
             - sparse
-            - keyword-based
-            """
-        )
-    with col2:
-        st.markdown(
-            """
-            **Embeddings**
-            - dense
-            - semantic
-            """
-        )
-    with col3:
-        st.markdown(
-            """
-            **Transformers**
-            - contextual
-            - task-adaptive
+            - strong keyword matching
+            - competitive baseline
             """
         )
 
-    st.subheader("Sentence embeddings")
-    col1, col2 = st.columns(2)
-    with col1:
-        col1.metric("Accuracy", "0.71")
-        col1.metric("Macro F1", "0.68")
-    with col2:
         st.markdown(
             """
-            - lose lexical precision
-            - weaker on keyword-driven tasks
+            **MiniLM**
+            - dense
+            - loses lexical detail
+            - weakest performance
             """
         )
-    st.info("Semantic compression reduces performance for product classification.")
-    '''
-    st.subheader("Model comparison")
-    _img = ION_IMAGE_DIR / "model_comparison.png"
-    if _img.exists():
-        st.image(str(_img), caption="CamemBERT slightly outperforms TF-IDF, while embeddings lag behind.", use_container_width=True)
-    '''
+
+        st.markdown(
+            """
+            **CamemBERT**
+            - context-aware
+            - task adaptive
+            - best overall performance
+            """
+        )
+    with col_T41 :
+        _img = ION_IMAGE_DIR / "model_comparison.png"
+        if _img.exists():
+            st.image(str(_img),
+                    caption="CamemBERT slightly outperforms TF-IDF, while MiniLM-based models lag behind.",
+                    width= "stretch")
+
+
+    st.success("Semantic compression reduces performance for product classification.")
+
 # =========================
 # 4.2 Text Modeling — Best model
 # =========================
 elif page == "4.2 Best model":
-    st.title("Rakuten Multimodal Product Data Classification")
     st.header("4.2 Best Text Model: CamemBERT")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Model", "CamemBERT")
     col2.metric("Input", "Title + description")
     col3.metric("Type", "Transformer")
-    st.caption("Captures contextual relationships between words through fine-tuning.")
 
-    st.subheader("Final performance")
-    col1, col2, col3 = st.columns(3)
     col1.metric("Accuracy", "0.8719")
     col2.metric("Macro F1", "0.8557")
     col3.metric("Rank", "Best")
     st.success("Best-performing text model across all evaluated approaches.")
 
-    st.subheader("Model comparison")
-    _img = ION_IMAGE_DIR / "model_comparison.png"
-    if _img.exists():
-        st.image(str(_img), caption="CamemBERT slightly outperforms TF-IDF, while MiniLM-based models lag behind.", use_container_width=True)
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    col_T50, col_T51 = st.columns([1, 3.5])
+
+    with col_T50 :
+        st.subheader("Key training decisions")
         st.markdown(
             """
-            **TF-IDF**
-            - strong keyword matching
-            - competitive baseline
-            """
-        )
-    with col2:
-        st.markdown(
-            """
-            **MiniLM**
-            - loses lexical detail
-            - weakest performance
-            """
-        )
-    with col3:
-        st.markdown(
-            """
-            **CamemBERT**
-            - context-aware
-            - best overall performance
+            - longer sequences improve performance
+            - gains continue up to 4 epochs
+            - best configuration: **256 tokens / 4 epochs**
             """
         )
 
-    st.subheader("Key training decisions")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Max length", "256")
-    col2.metric("Epochs", "4")
-    col3.metric("Trend", "Improving")
-    st.markdown(
-        """
-        - longer sequences improve performance
-        - gains continue up to 4 epochs
-        - best configuration: **256 tokens / 4 epochs**
-        """
-    )
-
-    st.subheader("Training behavior")
-    col1, col2 = st.columns(2)
-    with col1:
+        st.subheader("Training behavior")
         st.markdown(
             """
             - training loss ↓ steadily
             - validation improves up to epoch 4
-            - slight overfitting appears after
+            - slight overfitting appears after epoch 2
             """
         )
-    with col2:
+
+    with col_T51:
         _img = ION_IMAGE_DIR / "camembert_training_curves_split.png"
         if _img.exists():
-            st.image(str(_img), caption="Performance stabilizes around epochs 3–4.", use_container_width=True)
+            st.image(str(_img),
+                     caption="Performance stabilizes around epochs 3–4.",
+                     width="stretch")
 
-    st.subheader("Why it works")
-    col1, col2 = st.columns(2)
-    with col1:
+# =========================
+# 4.21 CamemBERT vs TF-IDF
+# =========================
+elif page == "4.21 CamemBERT vs TF-IDF" :
+
+    col_T60, col_T61 = st.columns([1, 2.2])
+    with col_T60 :
+        st.subheader("Why it works")
         st.markdown(
             """
             **Strengths**
@@ -2651,7 +2847,7 @@ elif page == "4.2 Best model":
             - adapts via fine-tuning
             """
         )
-    with col2:
+
         st.markdown(
             """
             **Compared to TF-IDF**
@@ -2660,22 +2856,21 @@ elif page == "4.2 Best model":
             """
         )
 
-    st.subheader("Per-class performance")
-    col1, col2 = st.columns(2)
-    with col1:
-        col1.metric("Categories improved", "17 / 27")
-    with col2:
+        st.subheader("Per-class performance")
+        col_T60.metric("Categories improved", "17 / 27")
         st.markdown("TF-IDF remains competitive in keyword-driven categories.")
-    _img = ION_IMAGE_DIR / "per_class_f1_delta_tfidf_camembert_top_changes.png"
-    if _img.exists():
-        st.image(str(_img), caption="Per-class performance differences.", use_container_width=True)
 
-    st.subheader("Where models differ")
-    _img = ION_IMAGE_DIR / "bow_class_comparison.png"
-    if _img.exists():
-        st.image(str(_img), caption="Red: TF-IDF better | Blue: CamemBERT better.", use_container_width=True)
-    col1, col2 = st.columns(2)
-    with col1:
+    with col_T61 :
+
+        _img = ION_IMAGE_DIR / "per_class_f1_delta_tfidf_camembert_top_changes.png"
+        if _img.exists():
+            st.image(str(_img),caption="Per-class performance differences.",
+                     width="stretch")
+
+    col_T62, col_T63 = st.columns([1, 2.2])
+
+    with col_T62 :
+        st.subheader("Where models differ")
         st.markdown(
             """
             **TF-IDF**
@@ -2684,7 +2879,7 @@ elif page == "4.2 Best model":
             - term-driven categories
             """
         )
-    with col2:
+
         st.markdown(
             """
             **CamemBERT**
@@ -2693,20 +2888,116 @@ elif page == "4.2 Best model":
             - context-dependent
             """
         )
-    st.info("TF-IDF = keywords | CamemBERT = context → complementary strengths")
 
-    st.subheader("Limitations")
-    col1, col2 = st.columns(2)
-    with col1:
+        st.subheader("Limitations")
         st.markdown(
             """
             - overlapping vocabulary across classes
             - text alone not always sufficient
             """
         )
-    with col2:
-        st.markdown("Visual features (shape, color, appearance) can improve classification.")
-    st.success("Next step: evaluate image-based models.")
+
+    with col_T63 :
+        _img = ION_IMAGE_DIR / "bow_class_comparison.png"
+        if _img.exists():
+            st.image(str(_img),
+                     caption="Red: TF-IDF better | Blue: CamemBERT better.",
+                     width="stretch")
+
+    st.success(
+        """
+        CamemBERT improves performance for most categories, especially where wording and context matter. \n
+        TF-IDF remains strong when categories are defined by repeated, distinctive keywords.
+        """
+    )
+
 
 elif page == "7. Prediction Tool":
     render_prediction_tool()
+
+# -------------------------------------------------------------------
+# 8. Conclusions
+# -------------------------------------------------------------------
+
+elif page == "8. Conclusions":
+
+    st.header("8. Conclusions")
+
+    st.write(
+        """
+        This project compared text, image, and multimodal models for classifying
+        Rakuten products into 27 categories.
+        """
+    )
+
+    st.subheader("Main findings")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(
+            """
+            **Text**
+            - Strongest signal
+            - TF-IDF is a strong baseline
+            - CamemBERT performs best overall
+            """
+        )
+
+    with col2:
+        st.markdown(
+            """
+            **Images**
+            - Useful but weaker alone
+            - Some classes are visually ambiguous
+            - Best used as complementary input
+            """
+        )
+
+    with col3:
+        st.markdown(
+            """
+            **Multimodal**
+            - Combines both signals
+            - Helpful for ambiguous products
+            - Improvement depends on fusion quality
+            """
+        )
+
+    st.subheader("Key lessons")
+
+    lesson_rows = pd.DataFrame([
+        {"Lesson": "Text matters most", "Explanation": "Titles and descriptions carry strong category information."},
+        {"Lesson": "Images are complementary", "Explanation": "They help when visual cues add information beyond text."},
+        {"Lesson": "Macro F1 is essential", "Explanation": "It better reflects performance across all 27 classes."},
+        {"Lesson": "Errors are class-dependent", "Explanation": "Some categories remain difficult because of overlap or ambiguity."},
+    ])
+
+    render_html_table(lesson_rows, max_width="950px")
+
+    st.subheader("Limitations")
+
+    col4, col5 = st.columns(2)
+
+    with col4:
+        st.markdown(
+            """
+            - Missing descriptions
+            - Noisy product titles
+            """
+        )
+
+    with col5:
+        st.markdown(
+            """
+            - Similar products across classes
+            - Limited compute for image models
+            """
+        )
+
+    st.success(
+        """
+        A strong text model is the best foundation for this dataset. \n
+        Images can add value, but only when they provide information not already captured by text.
+        """
+    )
