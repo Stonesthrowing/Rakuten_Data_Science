@@ -28,8 +28,10 @@ dependencies = [
     "streamlit>=1.40.0",
 ]
 
+
 [tool.uv.sources]
 torch = [
+<<<<<<< HEAD
     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
 ]
@@ -40,6 +42,15 @@ torchvision = [
 torchaudio = [
     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }
+=======
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" }
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" }
+]
+torchaudio = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" }
+>>>>>>> d200908796ec1c2b9367176862287817578abfa6
 ]
 
 [[tool.uv.index]]

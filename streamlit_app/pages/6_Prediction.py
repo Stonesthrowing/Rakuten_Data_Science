@@ -43,7 +43,7 @@ CATEGORY_PATH = BASE_DIR / "config" / "prdtypecode_mapping.json"
 with open(CATEGORY_PATH, "r", encoding="utf-8") as f:
     PRDTYPECODE_TO_NAME = {int(k): v for k, v in json.load(f).items()}
 
-st.title("🚀 Prediction")
+st.title("Prediction")
 st.caption("Upload a CSV and product image. Metadata is filled automatically if a matching row is found.")
 
 
@@ -56,6 +56,33 @@ def normalize_filename(value):
     if pd.isna(value):
         return ""
     return Path(str(value)).name.strip().lower()
+
+
+def normalize_column_name(value):
+    return str(value).strip().lower()
+
+
+def safe_cell_to_text(value):
+    if pd.isna(value):
+        return ""
+    text = str(value).strip()
+    if text.lower() in ["nan", "none", "null"]:
+        return ""
+    return text
+
+
+def find_column(row, candidates):
+    normalized_cols = {
+        normalize_column_name(col): col
+        for col in row.index
+    }
+
+    for candidate in candidates:
+        col = normalized_cols.get(normalize_column_name(candidate))
+        if col is not None:
+            return col
+
+    return None
 
 
 def find_metadata_row(df, image_filename):
@@ -71,15 +98,24 @@ def find_metadata_row(df, image_filename):
         "image",
     ]
 
-    for col in candidate_columns:
-        if col in df.columns:
-            matches = df[df[col].apply(normalize_filename) == image_filename_norm]
+    normalized_df_cols = {
+        normalize_column_name(col): col
+        for col in df.columns
+    }
+
+    for candidate_col in candidate_columns:
+        real_col = normalized_df_cols.get(normalize_column_name(candidate_col))
+        if real_col is not None:
+            matches = df[df[real_col].apply(normalize_filename) == image_filename_norm]
             if not matches.empty:
                 return matches.iloc[0]
 
-    if "imageid" in df.columns and "productid" in df.columns:
+    imageid_col = normalized_df_cols.get("imageid") or normalized_df_cols.get("image_id")
+    productid_col = normalized_df_cols.get("productid") or normalized_df_cols.get("product_id")
+
+    if imageid_col is not None and productid_col is not None:
         expected_names = df.apply(
-            lambda row: f"image_{row['imageid']}_product_{row['productid']}.jpg".lower(),
+            lambda row: f"image_{row[imageid_col]}_product_{row[productid_col]}.jpg".lower(),
             axis=1
         )
         matches = df[expected_names == image_filename_norm]
@@ -99,14 +135,32 @@ def get_text_from_row(row):
     if row is None:
         return "", ""
 
-    designation = ""
-    description = ""
+    designation_candidates = [
+        "designation",
+        "title",
+        "product_title",
+        "product_name",
+        "name",
+    ]
 
-    if "designation" in row.index and not pd.isna(row["designation"]):
-        designation = str(row["designation"])
+    description_candidates = [
+        "description",
+        "description_dedup",
+        "description dedup",
+        "description_clean",
+        "description clean",
+        "clean_description",
+        "clean description",
+        "product_description",
+        "product description",
+        "desc",
+    ]
 
-    if "description" in row.index and not pd.isna(row["description"]):
-        description = str(row["description"])
+    designation_col = find_column(row, designation_candidates)
+    description_col = find_column(row, description_candidates)
+
+    designation = safe_cell_to_text(row[designation_col]) if designation_col is not None else ""
+    description = safe_cell_to_text(row[description_col]) if description_col is not None else ""
 
     return designation, description
 
@@ -115,11 +169,13 @@ def get_image_id_from_row(row):
     if row is None:
         return "not found in csv file"
 
-    if "imageid" in row.index and not pd.isna(row["imageid"]):
-        return str(row["imageid"])
+    image_id_candidates = ["imageid", "image_id", "image id"]
+    image_id_col = find_column(row, image_id_candidates)
 
-    if "image_id" in row.index and not pd.isna(row["image_id"]):
-        return str(row["image_id"])
+    if image_id_col is not None:
+        image_id = safe_cell_to_text(row[image_id_col])
+        if image_id:
+            return image_id
 
     return "not found in csv file"
 
@@ -157,9 +213,6 @@ if "csv_status" not in st.session_state:
 if "prediction_output" not in st.session_state:
     st.session_state.prediction_output = None
 
-if "image_uploader_key" not in st.session_state:
-    st.session_state.image_uploader_key = 0
-
 left_col, middle_col, right_col = st.columns([1.25, 1.05, 0.95], gap="medium")
 
 df = None
@@ -178,31 +231,18 @@ with left_col:
         if st.session_state.last_csv_name is not None:
             st.session_state.csv_status = "CSV deleted."
             st.session_state.last_csv_name = None
-            st.session_state.image_uploader_key += 1
-            st.session_state.last_image_name = None
-            clear_image_related_state()
         else:
             st.session_state.csv_status = "No CSV loaded."
     else:
         try:
             df = pd.read_csv(csv_file)
+            df.columns = [str(col).strip() for col in df.columns]
             st.session_state.csv_status = f"CSV loaded: {len(df)} rows"
-
-            if csv_file.name != st.session_state.last_csv_name:
-                st.session_state.last_csv_name = csv_file.name
-                st.session_state.image_uploader_key += 1
-                st.session_state.last_image_name = None
-                clear_image_related_state()
-
+            st.session_state.last_csv_name = csv_file.name
         except Exception:
             df = None
             st.session_state.csv_status = "CSV could not be read."
-
-            if csv_file.name != st.session_state.last_csv_name:
-                st.session_state.last_csv_name = csv_file.name
-                st.session_state.image_uploader_key += 1
-                st.session_state.last_image_name = None
-                clear_image_related_state()
+            st.session_state.last_csv_name = csv_file.name
 
     st.markdown(
         f"<div class='small-info'>{st.session_state.csv_status}</div>",
@@ -212,8 +252,7 @@ with left_col:
     image_file = st.file_uploader(
         "Product image",
         type=["jpg", "jpeg", "png"],
-        label_visibility="visible",
-        key=f"image_uploader_{st.session_state.image_uploader_key}"
+        label_visibility="visible"
     )
 
     if image_file is None:
@@ -238,12 +277,8 @@ with left_col:
                     st.session_state.description_value = description_found
                     st.session_state.matched_image_id = image_id_found
                 else:
-                    st.session_state.designation_value = ""
-                    st.session_state.description_value = ""
                     st.session_state.matched_image_id = "not found in csv file"
             else:
-                st.session_state.designation_value = ""
-                st.session_state.description_value = ""
                 st.session_state.matched_image_id = "not found in csv file"
 
     st.markdown(f"**Image ID:** `{st.session_state.matched_image_id}`")
