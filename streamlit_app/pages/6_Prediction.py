@@ -338,7 +338,7 @@ with right_col:
         st.success("Prediction completed")
         st.write(f"**Predicted product type:** {top1_label}")
         st.write(f"**Confidence:** {top1['probability'] * 100:.2f}%")
-        st.write(f"**Text used:** `{output['text_used']}`")
+       # TO DO st.write(f"**Text used:** `{output['text_used']}`")
 
         st.markdown("### Top 3")
         for i, item in enumerate(output["top3"], start=1):
