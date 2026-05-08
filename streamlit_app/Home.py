@@ -15,6 +15,23 @@ from services.final_fusion_predictor import load_assets, predict
 st.set_page_config(
     page_title="Rakuten Multimodal Product Data Classification",
     layout="wide",
+    initial_sidebar_state="expanded",
+)
+st.markdown(
+    """
+    <style>
+    header[data-testid="stHeader"] { display: none !important; }
+    .block-container { padding-top: 0.5rem !important; margin-top: 0 !important; }
+    [data-testid="stAppViewContainer"] > section:first-child { padding-top: 0 !important; }
+    section[data-testid="stSidebar"] > div:first-child { padding-top: 0.5rem !important; }
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="collapsedControl"],
+    button[kind="header"],
+    .st-emotion-cache-zq5wmm,
+    .st-emotion-cache-1f391x5 { display: none !important; }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 APP_DIR = Path(__file__).resolve().parent
@@ -429,7 +446,7 @@ IMAGE_MODEL_RESULTS = [
      "Weighted F1": 0.6842, "Best epoch": "10", "Hardware / time": "111.65 min; RTX 5070 Ti"},
     {"Model": "Model_I8_ResNet50_ModerateAug_FromScratch", "Family": "ResNet", "Image size": "224",
      "Training strategy": "Random initialization", "Augmentation": "Moderate", "Accuracy": 0.5768, "Macro F1": 0.5105,
-     "Weighted F1": 0.5601, "Best epoch": "18", "Hardware / time": "329.37 min; hardware not explicitly stated"},
+     "Weighted F1": 0.5601, "Best epoch": "18", "Hardware / time": "329.37 min; Colab Pro Tesla 4 GPU"},
     {"Model": "Model_I8b_ResNet101_NoAug_Frozen", "Family": "ResNet", "Image size": "224",
      "Training strategy": "Frozen pretrained backbone", "Augmentation": "No", "Accuracy": "0.5425-0.5701",
      "Macro F1": "0.4971-0.5212", "Weighted F1": "—", "Best epoch": "16",
@@ -1126,8 +1143,8 @@ NAV_LEVELS = {
     "6.1.1 Simple Fusion": 1,
     "6.1.2 Intermediate Fusion": 1,
     "6.1.3 Gated Fusion": 1,
-    "6.1.4 CLIP Models": 1,
-    "6.2 Best model — Summary": 1,
+    "6.2 CLIP Models": 1,
+    "6.3 Best model — Summary": 1,
     "6.4 Multimodal Conclusion": 1,
     "7. Prediction Tool": 0,
     "8. Project Conclusions": 0,
@@ -1156,11 +1173,11 @@ NAV_DISPLAY = {
     "6.1.1 Simple Fusion": "Simple Fusion",
     "6.1.2 Intermediate Fusion": "Intermediate Fusion",
     "6.1.3 Gated Fusion": "Gated Fusion",
-    "6.1.4 CLIP Models": "CLIP Models",
+    "6.2 CLIP Models": "CLIP Models",
     "6.3 Best model — Summary": "Best model — Summary",
-    "6.4 Conclusion": "Conclusion Multimodal models",
+    "6.4 Multimodal Conclusion": "Multimodal Conclusion",
     "7. Prediction Tool": "Prediction Tool",
-    "8. Project Conclusions": "Conclusions",
+    "8. Project Conclusions": "Project Conclusions",
 }
 NAV_ITEMS = list(NAV_LEVELS.keys())
 DEFAULT_PAGE = "1. Overview"
@@ -1203,6 +1220,9 @@ section[data-testid="stSidebar"] h1 {
 .sidebar-nav {
     margin-top: 0.2rem;
     margin-bottom: 0.9rem;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 .sidebar-nav a,
 .sidebar-nav a:link,
@@ -1244,84 +1264,51 @@ section[data-testid="stSidebar"] h1 {
 }
 .nav-level-0 {
     color: #111827;
-    font-size: 1.12rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    padding: 0.56rem 0.70rem;
-    min-height: 2.45rem;
-    margin-top: 0.54rem;
-    margin-bottom: 0.16rem;
+    padding: 0.35rem 0.60rem;
+    min-height: 1.9rem;
+    margin-top: 0.35rem;
+    margin-bottom: 0.08rem;
 }
 .nav-level-1 {
     color: #374151;
-    font-size: 0.98rem;
+    font-size: 0.84rem;
     font-weight: 600;
-    padding: 0.44rem 0.70rem;
-    min-height: 2.18rem;
-    margin-top: 0.12rem;
-    margin-bottom: 0.12rem;
+    padding: 0.28rem 0.60rem;
+    min-height: 1.7rem;
+    margin-top: 0.06rem;
+    margin-bottom: 0.06rem;
 }
 .nav-level-2 {
     color: #6b7280;
-    font-size: 0.89rem;
+    font-size: 0.76rem;
     font-weight: 500;
-    padding: 0.34rem 0.70rem;
-    min-height: 1.95rem;
-    margin-top: 0.06rem;
-    margin-bottom: 0.06rem;
+    padding: 0.22rem 0.60rem;
+    min-height: 1.5rem;
+    margin-top: 0.04rem;
+    margin-bottom: 0.04rem;
 }
 .sidebar-nav a:first-of-type .nav-button {
     margin-top: 0 !important;
 }
 </style>
 """
-nav_html = [nav_css, '<div class="sidebar-nav">']
-for item in NAV_ITEMS:
-    label = escape(NAV_DISPLAY.get(item, item))
-    level = NAV_LEVELS[item]
-    active = " active" if item == page else ""
-    href = f"?page={quote(item)}"
-    nav_html.append(
-        f'<a href="{href}" target="_self"><div class="nav-button nav-level-{level}{active}">{label}</div></a>')
-nav_html.append("</div>")
-st.sidebar.markdown("\n".join(nav_html), unsafe_allow_html=True)
+@st.cache_data
+def _build_nav_html(active_page: str) -> str:
+    items = [nav_css, '<div class="sidebar-nav">']
+    for item in NAV_ITEMS:
+        label = escape(NAV_DISPLAY.get(item, item))
+        level = NAV_LEVELS[item]
+        active = " active" if item == active_page else ""
+        href = f"?page={quote(item)}"
+        items.append(
+            f'<a href="{href}" target="_self"><div class="nav-button nav-level-{level}{active}">{label}</div></a>')
+    items.append("</div>")
+    return "\n".join(items)
 
-st.sidebar.markdown("---")
-st.sidebar.caption("Image folders for Prediction Explorer / Error Analysis")
-default_image_dirs = "\n".join([
-    # Primary — team-agreed project data folder
-    str(DATA_DIR / "Streamlit" / "I12_ConvNeXT" / "images" / "image_train"),
-    str(DATA_DIR / "Streamlit" / "I12_ConvNeXT" / "image_train"),
-    str(DATA_DIR / "images" / "image_train"),
-    str(DATA_DIR / "image_train"),
+st.sidebar.markdown(_build_nav_html(page), unsafe_allow_html=True)
 
-    # Kaggle Streamlit dataset layout, if images are copied there later
-    "/kaggle/input/streamlit/Streamlit/I12_ConvNeXT/images/image_train",
-    "/kaggle/input/streamlit/Streamlit/I12_ConvNeXT/image_train",
-    "/kaggle/input/streamlit/Streamlit/images/image_train",
-    "/kaggle/input/streamlit/Streamlit/image_train",
-    "/kaggle/input/streamlit/I12_ConvNeXT/images/image_train",
-    "/kaggle/input/streamlit/I12_ConvNeXT/image_train",
-    "/kaggle/input/streamlit/images/image_train",
-    "/kaggle/input/streamlit/image_train",
-
-    # Separate Kaggle image dataset: https://www.kaggle.com/datasets/arturillenseer/rakuten-product-images-ml
-    "/kaggle/input/rakuten-product-images-ml/image_train",
-    "/kaggle/input/rakuten-product-images-ml/images/image_train",
-    "/kaggle/input/rakuten-product-images-ml/image_test",
-    "/kaggle/input/rakuten-product-images-ml/images/image_test",
-
-    # Kaggle older/fallback layouts
-    "/kaggle/input/rakuten-product-images-ml/streamlit/I12_ConvNeXT/images/image_train",
-    "/kaggle/input/rakuten-product-images-ml/streamlit/I12_ConvNeXT/image_train",
-    "/kaggle/input/rakuten-product-images-ml/Streamlit/I12_ConvNeXT/images/image_train",
-    "/kaggle/input/rakuten-product-images-ml/Streamlit/I12_ConvNeXT/image_train",
-    str(APP_DIR / "images" / "image_train"),
-    str(APP_DIR / "image_train"),
-    "/kaggle/input/i12/images/image_train",
-    "/kaggle/input/i5/images/image_train",
-])
-image_dir_text = st.sidebar.text_area("One folder per line", value=default_image_dirs, height=90)
-image_dirs = [x for x in image_dir_text.splitlines() if x.strip()]
 
 # -------------------------------------------------------------------
 # Blank report chapters
@@ -2212,13 +2199,17 @@ elif page == "6. Multimodal":
     ]
     render_html_table(pd.DataFrame(baseline_rows), max_width="600px")
 
-elif page == "6.1 Conclusion":
+elif page == "6.4 Multimodal Conclusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1 Conclusion Multimodal models")
+    st.header("6.4 Multimodal Conclusion")
     st.write(
         "Both fusion models share the same frozen branches. The table below places them next to the best "
         "unimodal baselines to show the gain from combining modalities."
     )
+
+    _mm_cmp_img = APP_DIR / "images" / "multimodal_comparison.png"
+    if _mm_cmp_img.exists():
+        st.image(str(_mm_cmp_img), width=550)
 
     f1_text = mm_late_meta.get("f1_text_only")
     f1_image = mm_late_meta.get("f1_image_only")
@@ -2268,14 +2259,18 @@ elif page == "6.1 Conclusion":
     ]
     render_html_table(pd.DataFrame(comparison_rows))
 
-    st.subheader("Key takeaways")
     st.markdown(
         """
-        - Both fusion models substantially outperform the image-only baseline (+21 pp macro F1).
-        - Late Fusion narrowly beats Intermediate Fusion in macro F1 despite requiring no additional training.
-        - CamemBERT carries most of the predictive signal; adding images provides a consistent +1–2 pp gain over text alone.
-        - The optimal α of 0.55 (55 % image weight) shows both modalities contribute meaningfully.
-        """
+        <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:8px; padding:1rem 1.4rem;">
+        <ul style="margin:0; padding-left:1.2rem; color:#1b5e20;">
+          <li style="margin-bottom:0.45rem;">Both fusion models substantially outperform the image-only baseline (+21 pp macro F1).</li>
+          <li style="margin-bottom:0.45rem;">Late Fusion narrowly beats Intermediate Fusion in macro F1 despite requiring no additional training.</li>
+          <li style="margin-bottom:0.45rem;">CamemBERT carries most of the predictive signal; adding images provides a consistent +1–2 pp gain over text alone.</li>
+          <li style="margin-bottom:0;">The optimal α of 0.55 (55 % image weight) shows both modalities contribute meaningfully.</li>
+        </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 elif page == "6.1.1 Simple Fusion":
@@ -2460,111 +2455,77 @@ elif page == "6.1.2 Intermediate Fusion":
 
 elif page == "6.1.3 Gated Fusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.3 Gated Fusion")
-
-    st.markdown(
-        """
-The gated fusion model combines CamemBERT (text) and CLIP Vision (image) at the **feature level**.
-Instead of simply concatenating the two embeddings, a small gating network learns how much to rely
-on text versus image for each sample.
-        """
+    st.header("6.1.3 Gated Fusion — Learned Feature Mixing")
+    st.write(
+        "Gated Fusion combines CamemBERT (text) and CLIP Vision (image) at the feature level. "
+        "Instead of blending probability distributions (Late Fusion) or concatenating features with a fixed head "
+        "(Intermediate Fusion), a small gating network learns how much to rely on text versus image "
+        "per feature dimension for each sample."
     )
 
-    st.subheader("Architecture")
+    st.subheader("How it works")
+    _col_text_613, _col_img_613 = st.columns([1, 1.6])
+    with _col_text_613:
+        st.markdown(
+            """
+            1. **Text branch** — CamemBERT → 768-dim CLS embedding **h_text**
+            2. **Image branch** — CLIP ViT-B/32 → 768-dim pooled embedding **h_image**
+            3. **Gate** — `g = sigmoid(MLP([h_text, h_image]))` — 768-dim vector
+            4. **Fusion** — `fused = g · h_image + (1 − g) · h_text`
+            5. **Classifier** — `[fused, h_text, h_image]` → 2304-dim → 27 classes
 
-    st.markdown(
-        """
-CamemBERT produces a **768-dimensional** text embedding from the CLS token.
-CLIP Vision produces a **768-dimensional** image embedding from the pooled visual output.
+            The gate learns a **per-dimension** mixing weight: for each feature it decides
+            whether text or image is more informative, rather than applying a single global weight.
+            """
+        )
+    with _col_img_613:
+        _gate_flow_img = APP_DIR / "images" / "gate_fusion_flow.png"
+        if _gate_flow_img.exists():
+            st.image(str(_gate_flow_img), use_container_width=True)
 
-Both embeddings are L2-normalized and concatenated into a 1536-dimensional vector.
-A small gating network then learns a 768-dimensional gate vector:
-
-`g = sigmoid(MLP([text, image]))`
-
-The fused representation is computed as:
-
-`fused = g * image + (1 - g) * text`
-
-Finally, the model concatenates the fused vector with the original text and image vectors:
-
-`final = [fused, text, image]  →  2304d  →  classifier  →  27 classes`
-
-The gate learns how much to rely on text versus image information **per feature dimension**.
-        """
+    st.caption(
+        "**What does the gate learn?** — For text-rich categories (e.g. books, software) the gate "
+        "weights h_text heavily; for visually distinctive categories (e.g. outdoor games, tools) "
+        "it shifts weight towards h_image. This dynamic mixing is learned end-to-end."
     )
 
     st.subheader("Staged unfreezing strategy")
+    st.write("Training proceeds in three stages to avoid catastrophic forgetting of the pretrained backbones.")
+    unfreeze_df = pd.DataFrame([
+        {"Stage": "Stage 1 — Head only",       "Trainable":   "Gate + classifier",                          "Backbones": "Frozen",            "Purpose": "Warm up fusion layers without disturbing pretrained weights."},
+        {"Stage": "Stage 2 — Partial unfreeze", "Trainable":  "Gate + classifier + last 2 encoder blocks",  "Backbones": "Partially unfrozen", "Purpose": "Adapt high-level features to the product domain."},
+        {"Stage": "Stage 3 — Full unfreeze",    "Trainable":  "All layers",                                 "Backbones": "Fully unfrozen",     "Purpose": "End-to-end fine-tuning for maximum task adaptation."},
+    ])
+    render_html_table(unfreeze_df, max_width="960px")
 
-    st.markdown(
-        """
-Training proceeds in three stages to avoid catastrophic forgetting of the pretrained backbones.
-        """
+    st.subheader("Validation metrics — best model (aug + softmax gate)")
+    metrics_gate = {"accuracy": 0.892, "macro_f1": 0.880, "weighted_f1": None, "validation_samples": 16984}
+    render_metric_cards(metrics_gate, value_font_size="1.3rem")
+
+    st.subheader("Unimodal vs. fusion comparison")
+    def _f(v, d=4):
+        return f"{v:.{d}f}" if v is not None else "—"
+    comp_gate_df = pd.DataFrame([
+        {"Model": "Text only — CamemBERT",          "Macro F1": _f(mm_late_meta.get("f1_text_only"))},
+        {"Model": "Image only — ConvNeXt-Base",      "Macro F1": _f(mm_late_meta.get("f1_image_only"))},
+        {"Model": "Gated Fusion — frozen",           "Macro F1": "0.8640"},
+        {"Model": "Gated Fusion — staged unfreeze",  "Macro F1": "0.8640"},
+        {"Model": "Gated Fusion — aug + softmax ★",  "Macro F1": "0.8800"},
+    ])
+    render_html_table(comp_gate_df, max_width="600px")
+
+    st.success(
+        "Gated Fusion learns to dynamically weight text and image features per dimension, "
+        "giving it more expressive power than a fixed mixing weight. "
+        "The best result (macro F1 0.880) came not from unfreezing alone, but from combining "
+        "a shared projection space, softmax gating, image augmentation, and label smoothing. "
+        "Late Fusion with ConvNeXt still outperforms (0.891), suggesting that ConvNeXt's richer "
+        "image features matter more than the fusion mechanism itself."
     )
 
-    unfreeze_df = pd.DataFrame([
-        {
-            "Stage": "Stage 1 — Head only",
-            "Trainable layers": "Gate + classifier",
-            "Backbones": "Frozen",
-            "Purpose": "Warm up the new fusion layers without disturbing pretrained weights.",
-        },
-        {
-            "Stage": "Stage 2 — Partial unfreeze",
-            "Trainable layers": "Gate + classifier + last 2 encoder blocks",
-            "Backbones": "Partially unfrozen",
-            "Purpose": "Adapt high-level text and image features to the product domain.",
-        },
-        {
-            "Stage": "Stage 3 — Full unfreeze",
-            "Trainable layers": "All layers",
-            "Backbones": "Fully unfrozen",
-            "Purpose": "End-to-end fine-tuning for maximum task adaptation.",
-        },
-    ])
-    render_html_table(unfreeze_df, max_width="950px")
-
-    st.subheader("Results")
-
-    gate_results = [
-        {"Model": "CamemBERT+CLIP frozen", "Training": "Frozen", "Accuracy": 0.877, "Macro F1": 0.864, "best": False},
-        {"Model": "CamemBERT+CLIP staged ★", "Training": "Staged unfreeze", "Accuracy": 0.875, "Macro F1": 0.864,
-         "best": True},
-    ]
-    rows_html = ""
-    for r in gate_results:
-        bg = "#f0fdf4" if r["best"] else "white"
-        fw = "700" if r["best"] else "400"
-        rows_html += (
-            f'<tr style="background:{bg};">'
-            f'<td style="font-weight:{fw};white-space:nowrap;">{r["Model"]}</td>'
-            f'<td>{r["Training"]}</td>'
-            f'<td style="text-align:center;font-weight:{fw};color:#1d4ed8;">{r["Accuracy"]:.3f}</td>'
-            f'<td style="text-align:center;font-weight:{fw};color:#065f46;">{r["Macro F1"]:.3f}</td>'
-            f'</tr>'
-        )
-    st.markdown(f"""
-    <div style="overflow-x:auto; margin:0.5rem 0 1.2rem 0;">
-    <table style="border-collapse:collapse; font-size:0.92rem; width:auto; min-width:480px;">
-      <thead>
-        <tr style="background:#f1f5f9; color:#475569; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.04em;">
-          <th style="padding:0.5rem 0.8rem; text-align:left; border-bottom:2px solid #e2e8f0;">Model</th>
-          <th style="padding:0.5rem 0.8rem; text-align:left; border-bottom:2px solid #e2e8f0;">Training</th>
-          <th style="padding:0.5rem 0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">Accuracy</th>
-          <th style="padding:0.5rem 0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">Macro F1</th>
-        </tr>
-      </thead>
-      <tbody>{rows_html}</tbody>
-    </table>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.info("Frozen and staged-unfreeze versions reached almost identical Macro F1 (0.864). "
-            "The main gain came later with augmentation and softmax gating — see the CLIP Models page.")
-
-elif page == "6.1.4 CLIP Models":
+elif page == "6.2 CLIP Models":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.4 CLIP Models")
+    st.header("6.2 CLIP Models")
     st.markdown(
         """
 CLIP (`openai/clip-vit-base-patch32`) learns visual and textual representations in a shared embedding space.
@@ -2580,15 +2541,11 @@ French-language understanding from CamemBERT.
         """
     )
 
-    _clip_arch = APP_DIR / "images" / "CLIP_model_arch.png"
+    _clip_arch = APP_DIR / "images" / "clip.png"
     if _clip_arch.exists():
         col, _ = st.columns([0.6, 0.4])
         col.image(str(_clip_arch), use_container_width=True)
 
-    _clip_types = APP_DIR / "images" / "CLIP_model_types.png"
-    if _clip_types.exists():
-        col, _ = st.columns([0.6, 0.4])
-        col.image(str(_clip_types), use_container_width=True)
 
     clip_chart = APP_DIR / "images" / "clip_model_comparison.png"
     if clip_chart.exists():
@@ -2617,9 +2574,9 @@ The best overall result was ConvNeXt + CamemBERT late fusion, reaching 0.891 mac
         "The strongest model used CamemBERT for French text and ConvNeXt for product images."
     )
 
-elif page == "6.2 Best model — Summary":
+elif page == "6.3 Best model — Summary":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.2 Best Multimodal Model — Simple Fusion")
+    st.header("6.3 Best Multimodal Model — Simple Fusion")
 
     alpha = mm_late_meta.get("best_alpha", "—")
     accuracy = mm_late_meta.get("accuracy")
@@ -2713,9 +2670,9 @@ elif page == "6.2 Best model — Summary":
     if _lf_cm.exists():
         st.image(str(_lf_cm),
                  caption="Row-normalised confusion matrix with class names and counts — Simple Fusion (CamemBERT + ConvNeXt-Base)",
-                 use_container_width=True)
+                 width=650)
     elif mm_late_cm_png and mm_late_cm_png.exists():
-        st.image(str(mm_late_cm_png), caption="Validation confusion matrix — Simple Fusion", use_container_width=True)
+        st.image(str(mm_late_cm_png), caption="Validation confusion matrix — Simple Fusion", width=650)
     else:
         st.info("Confusion matrix image not found.")
 
@@ -3381,87 +3338,57 @@ elif page == "7. Prediction Tool":
 # 8. Conclusions
 # -------------------------------------------------------------------
 
-elif page == "8. Conclusions":
+elif page == "8. Project Conclusions":
 
-    st.header("8. Conclusions")
+    st.header("8. Project Conclusions")
 
     st.write(
-        """
-        This project compared text, image, and multimodal models for classifying
-        Rakuten products into 27 categories.
-        """
+        "This project built and compared text, image, and multimodal models for classifying "
+        "Rakuten products into 27 categories. The pipeline progressed from simple baselines "
+        "to a full multimodal fusion system combining CamemBERT and ConvNeXt-Base."
     )
 
-    st.subheader("Main findings")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown(
-            """
-            **Text**
-            - Strongest signal
-            - TF-IDF is a strong baseline
-            - CamemBERT performs best overall
-            """
-        )
-
-    with col2:
-        st.markdown(
-            """
-            **Images**
-            - Useful but weaker alone
-            - Some classes are visually ambiguous
-            - Best used as complementary input
-            """
-        )
-
-    with col3:
-        st.markdown(
-            """
-            **Multimodal**
-            - Combines both signals
-            - Helpful for ambiguous products
-            - Improvement depends on fusion quality
-            """
-        )
+    _conclusion_img = APP_DIR / "images" / "project_conlusion.png"
+    if _conclusion_img.exists():
+        st.image(str(_conclusion_img), use_container_width=True)
 
     st.subheader("Key lessons")
-
-    lesson_rows = pd.DataFrame([
-        {"Lesson": "Text matters most", "Explanation": "Titles and descriptions carry strong category information."},
-        {"Lesson": "Images are complementary",
-         "Explanation": "They help when visual cues add information beyond text."},
-        {"Lesson": "Macro F1 is essential", "Explanation": "It better reflects performance across all 27 classes."},
-        {"Lesson": "Errors are class-dependent",
-         "Explanation": "Some categories remain difficult because of overlap or ambiguity."},
-    ])
-
-    render_html_table(lesson_rows, max_width="950px")
+    st.markdown(
+        """
+        <div style="max-width:960px; overflow-x:auto; margin:0.35rem 0 1.0rem 0;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="background:#2e7d32; color:#fff; font-weight:600; text-align:left; border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; width:22%;">Lesson</th>
+              <th style="background:#2e7d32; color:#fff; font-weight:600; text-align:left; border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem;">Explanation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#e8f5e9;"><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#1b5e20; font-weight:600;">Text dominates</td><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#262730;">French product titles and descriptions carry the strongest category signal — CamemBERT alone reaches macro F1 ≈ 0.871.</td></tr>
+            <tr style="background:#f1f8f1;"><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#1b5e20; font-weight:600;">Images are complementary</td><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#262730;">ConvNeXt-Base adds signal for visually distinctive categories but cannot resolve text-ambiguous ones alone.</td></tr>
+            <tr style="background:#e8f5e9;"><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#1b5e20; font-weight:600;">Late fusion is powerful</td><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#262730;">A simple weighted average of the two unimodal outputs achieves the best overall result without any additional training.</td></tr>
+            <tr style="background:#f1f8f1;"><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#1b5e20; font-weight:600;">Architecture &gt; tuning</td><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#262730;">Switching backbone (ResNet → ConvNeXt) gave larger gains than any fine-tuning change within the same architecture.</td></tr>
+            <tr style="background:#e8f5e9;"><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#1b5e20; font-weight:600;">Macro F1 is essential</td><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#262730;">Accuracy masks class imbalance; macro F1 reflects true performance across all 27 categories equally.</td></tr>
+          </tbody>
+        </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.subheader("Limitations")
-
-    col4, col5 = st.columns(2)
-
-    with col4:
-        st.markdown(
-            """
-            - Missing descriptions
-            - Noisy product titles
-            """
-        )
-
-    with col5:
-        st.markdown(
-            """
-            - Similar products across classes
-            - Limited compute for image models
-            """
-        )
-
-    st.success(
+    st.markdown(
         """
-        A strong text model is the best foundation for this dataset. \n
-        Images can add value, but only when they provide information not already captured by text.
-        """
+        <div style="background:#fff5f5; border:1px solid #f5c6c6; border-radius:8px; padding:1rem 1.4rem;">
+        <ul style="margin:0; padding-left:1.2rem; color:#333;">
+          <li style="margin-bottom:0.45rem;"><strong>Missing descriptions (~35%).</strong> Many products have no description — the model must rely on the title alone, losing context that CamemBERT could exploit.</li>
+          <li style="margin-bottom:0.45rem;"><strong>Noisy product titles.</strong> Titles sometimes contain HTML artifacts, numeric codes, or mixed-language tokens that add noise rather than signal.</li>
+          <li style="margin-bottom:0.45rem;"><strong>Visually ambiguous categories.</strong> Classes like toys, board games, and hobby figurines share packaging shapes and colours — image models cannot reliably separate them.</li>
+          <li style="margin-bottom:0.45rem;"><strong>Limited compute for image experiments.</strong> Some architectures (EfficientNet, DINOv2) could not be fully explored due to hardware and time constraints.</li>
+          <li style="margin-bottom:0;"><strong>French-only text pretraining.</strong> CamemBERT was pretrained exclusively on French; German and occasional English tokens in descriptions are handled less reliably.</li>
+        </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
