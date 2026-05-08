@@ -37,7 +37,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 CATEGORY_PATH = BASE_DIR / "config" / "prdtypecode_mapping.json"
 
 with open(CATEGORY_PATH, "r", encoding="utf-8") as f:

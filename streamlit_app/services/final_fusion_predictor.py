@@ -12,10 +12,9 @@ MAX_TEXT_LEN = 128
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-OUTPUT_DIR = BASE_DIR / "outputs" / "image_modeling" / "multimodal" / "mm_camembert_clip_gated_fusion_staged_unfreeze"
 SPLIT_DIR = BASE_DIR / "outputs" / "image_modeling"
 
-BEST_CHECKPOINT_PATH = OUTPUT_DIR / "best_checkpoint.pt"
+BEST_CHECKPOINT_PATH = BASE_DIR / "data" / "models" / "mm_camembert_clip_gated_fusion_staged_unfreeze_best" / "best_checkpoint.pt"
 LABEL2ID_PATH = SPLIT_DIR / "label2id.json"
 
 USE_MPS = False

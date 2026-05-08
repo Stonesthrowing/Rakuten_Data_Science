@@ -19,6 +19,8 @@ st.set_page_config(
 
 APP_DIR  = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR.parent / "data"   # shared data folder agreed upon by the team
+PROJECT_DIR = APP_DIR.parent
+MULTIMODAL_OUTPUT_DIR = PROJECT_DIR / "outputs" / "image_modeling" / "multimodal"
 
 MM_LATE_DIR  = DATA_DIR / "Streamlit" / "MM_CamemBERT_ConvNeXtBase_LateFusion"
 MM_INTER_DIR = DATA_DIR / "Streamlit" / "MM_CamemBERT_ConvNeXtBase_IntermediateFusion"
@@ -591,7 +593,7 @@ def placeholder_page(title):
 
 def render_prediction_tool():
     """Render the standalone Prediction page inside this custom navigation app."""
-    prediction_page = APP_DIR /"pages" / "6_Prediction.py"
+    prediction_page = APP_DIR / "prediction_tool.py"
     if not prediction_page.exists():
         st.error(f"Prediction page not found: {prediction_page}")
         return
@@ -1049,7 +1051,8 @@ NAV_LEVELS = {
     "5.2.6 Setup Check": 2,
     "6. Multimodal": 0,
     "6.1.1 Simple Fusion": 1,
-    "6.1.2 CLIP Models": 1,
+    "6.1.2 Gated Fusion": 1,
+    "6.1.3 CLIP Models": 1,
     "6.2 Best model — Summary": 1,
     "6.2.2 Training history": 2,
     "6.2.3 Classification Report + Confusion Matrix": 2,
@@ -1081,7 +1084,8 @@ NAV_DISPLAY = {
     "5.2.6 Setup Check": "Setup Check Image model",
     "6. Multimodal": "Multimodal",
     "6.1.1 Simple Fusion": "Simple Fusion",
-    "6.1.2 CLIP Models": "CLIP Models",
+    "6.1.2 Gated Fusion": "Gated Fusion",
+    "6.1.3 CLIP Models": "CLIP Models",
     "6.2 Best model — Summary": "Best model — Summary",
     "6.2.2 Training history": "Training history Multimodal model",
     "6.2.3 Classification Report + Confusion Matrix": "Classification Report + Confusion Matrix Multimodal model",
@@ -1869,49 +1873,20 @@ elif page == "6.1 Conclusion":
     def _f(v, d=4):
         return f"{v:.{d}f}" if v is not None else "—"
 
-    comparison_rows = [
-        {
-            "Model": "CamemBERT (text only)",
-            "Approach": "Text branch alone",
-            "Accuracy": "0.8807",
-            "Macro F1": "0.8616",
-            "Weighted F1": "0.8800",
-            "Notes": "Best text-only baseline (T8, 3 epochs, max_len=128)",
-        },
-        {
-            "Model": "ConvNeXt-Base (image only)",
-            "Approach": "Image branch alone",
-            "Accuracy": "0.720",
-            "Macro F1": _f(f1_image),
-            "Weighted F1": "0.720",
-            "Notes": "Best image-only baseline",
-        },
-        {
-            "Model": "Late Fusion",
-            "Approach": "Weighted softmax average (α = 0.55)",
-            "Accuracy": _f(late_acc, 3),
-            "Macro F1": _f(late_f1),
-            "Weighted F1": _f(late_wf1, 4),
-            "Notes": "No fusion training; α tuned on val",
-        },
-        {
-            "Model": "Intermediate Fusion",
-            "Approach": "Trained projection head on frozen branches",
-            "Accuracy": "0.905",
-            "Macro F1": _f(inter_f1),
-            "Weighted F1": "0.905",
-            "Notes": f"Best at epoch {mm_inter_meta.get('best_epoch', '—')}",
-        },
-    ]
-    render_html_table(pd.DataFrame(comparison_rows))
+    _mm_chart = APP_DIR / "images" / "multi_modal_comparison.png"
+    if _mm_chart.exists():
+        col, _ = st.columns([0.6, 0.4])
+        col.image(str(_mm_chart), use_container_width=True)
 
-    st.subheader("Key takeaways")
-    st.markdown(
+    st.success(
         """
-        - Both fusion models substantially outperform the image-only baseline (+21 pp macro F1).
-        - Late Fusion narrowly beats Intermediate Fusion in macro F1 despite requiring no additional training.
-        - CamemBERT carries most of the predictive signal; adding images provides a consistent +1–2 pp gain over text alone.
-        - The optimal α of 0.55 (55 % image weight) shows both modalities contribute meaningfully.
+- Both fusion models substantially outperform the image-only baseline (~21% higher macro F1).
+- Late Fusion narrowly beats Intermediate Fusion in macro F1 despite requiring no additional training.
+- CamemBERT carries most of the predictive signal; adding images provides a consistent ~1–2% gain over text alone.
+- The optimal α of 0.55 (55 % image weight) shows both modalities contribute meaningfully.
+- ConvNeXt-Base is a more modern and stronger image backbone than CLIP Vision — designed specifically for visual classification, whereas CLIP Vision is optimised for image-text alignment and was trained on 400M English-labeled image-text pairs. This makes ConvNeXt a better fit for extracting product-image features in this French-language dataset.
+- In Gated Fusion, the gate learns to weight text very heavily, making the image branch marginal regardless of whether the backbone is frozen or fine-tuned.
+- Unfreezing large pretrained backbones trained on millions of data points does not make sense with only ~18K samples. A strong frozen backbone combined with a simple fusion strategy outperforms complex fine-tuning in this low-data regime.
         """
     )
 
@@ -1966,183 +1941,164 @@ elif page == "6.1.1 Simple Fusion":
     ])
     render_html_table(comp_df, max_width="600px")
 
-elif page == "6.1.2 CLIP Models":
+elif page == "6.1.2 Gated Fusion":
     st.title("Rakuten Multimodal Product Data Classification")
-    st.header("6.1.2 CLIP Models")
+    st.header("6.1.2 Gated Fusion")
+
     st.markdown(
         """
-CLIP (`openai/clip-vit-base-patch32`) is a model that learns images and text together:
-it was trained on 400 million image–text pairs so that a product photo and its description
-end up close to each other in the same vector space.
-
-**The problem with CLIP's text encoder for this dataset:** CLIP's built-in text branch
-was designed for English and accepts at most 77 tokens. Rakuten descriptions are in French
-and are often longer — so CLIP's vocabulary simply cannot represent them well.
-
-**The solution:** keep CLIP's image encoder (ViT-B/32, strong visual features),
-but swap the text encoder for **CamemBERT** — a BERT model pretrained on French text
-with a 128-token limit. This gives the best of both worlds: rich French text understanding
-from CamemBERT and strong visual features from CLIP.
-
-**What was tested:** five pipelines in total — two using CLIP's own text encoder as a
-baseline (frozen, then partial unfreeze), then three pairing the CLIP image encoder with
-CamemBERT under progressively more aggressive fine-tuning
-(frozen → staged unfreeze → staged unfreeze + image augmentation + label smoothing).
+The gated fusion model combines CamemBERT (text) and CLIP Vision (image) at the **feature level**.
+Instead of simply concatenating the two embeddings, a small gating network learns how much to rely
+on text versus image for each sample.
         """
     )
 
-    st.subheader("Components at a glance")
-    backbone_df = pd.DataFrame([
-        {"Component": "Image encoder", "Model": "CLIP ViT-B/32", "Detail": "Splits image into 32×32 patches — 768-dim raw output (projected to 512-dim in the best model)"},
-        {"Component": "Text encoder — baseline runs", "Model": "CLIP text Transformer", "Detail": "Max 77 tokens, English pretrained — weak on French"},
-        {"Component": "Text encoder — best runs", "Model": "CamemBERT-base", "Detail": "Max 128 tokens, pretrained on French Common Crawl — 768-dim raw output (projected to 512-dim in the best model)"},
-    ])
-    render_html_table(backbone_df, max_width="850px")
+    st.subheader("Architecture")
 
-    st.subheader("Approaches explored")
-    st.write(
-        "Five distinct pipelines were tested, progressing from frozen CLIP-only features "
-        "to fully end-to-end unfreezing with CamemBERT as the text branch and image augmentation."
-    )
-    approach_df = pd.DataFrame([
-        {
-            "Run": "mm_clip_base_noaug_frozen",
-            "Text branch": "CLIP text encoder",
-            "Image branch": "CLIP ViT-B/32",
-            "Fusion": "Linear classifier on joint [img, txt] embedding",
-            "Training": "Frozen — head only",
-            "Augmentation": "No",
-            "Accuracy": "0.740",
-            "Macro F1": "0.672",
-        },
-        {
-            "Run": "mm_clip_base_noaug_partial_unfreeze",
-            "Text branch": "CLIP text encoder",
-            "Image branch": "CLIP ViT-B/32",
-            "Fusion": "Linear classifier on joint [img, txt] embedding",
-            "Training": "Partial unfreeze",
-            "Augmentation": "No",
-            "Accuracy": "—",
-            "Macro F1": "—",
-        },
+    st.markdown(
+        """
+CamemBERT produces a **768-dimensional** text embedding from the CLS token.
+CLIP Vision produces a **768-dimensional** image embedding from the pooled visual output.
 
-        {
-            "Run": "mm_camembert_clip_gatedfusion_frozen",
-            "Text branch": "CamemBERT",
-            "Image branch": "CLIP ViT-B/32",
-            "Fusion": "Gated fusion head",
-            "Training": "Frozen branches",
-            "Augmentation": "No",
-            "Accuracy": "0.877",
-            "Macro F1": "0.864",
-        },
-        {
-            "Run": "mm_camembert_clip_gated_fusion_staged_unfreeze",
-            "Text branch": "CamemBERT",
-            "Image branch": "CLIP ViT-B/32",
-            "Fusion": "Gated fusion head",
-            "Training": "Staged unfreeze (3 stages)",
-            "Augmentation": "No",
-            "Accuracy": "0.875",
-            "Macro F1": "0.864",
-        },
-        {
-            "Run": "mm_camembert_clip_aug_gatedfusion_unfreeze",
-            "Text branch": "CamemBERT",
-            "Image branch": "CLIP ViT-B/32",
-            "Fusion": "Projection → shared dim 512 + softmax gated fusion",
-            "Training": "Staged unfreeze + label smoothing 0.1",
-            "Augmentation": "Yes",
-            "Accuracy": "0.892",
-            "Macro F1": "0.880",
-        },
-    ])
-    render_html_table(approach_df)
+Both embeddings are L2-normalized and concatenated into a 1536-dimensional vector.
+A small gating network then learns a 768-dimensional gate vector:
 
-    st.subheader("Gated Fusion architecture")
-    st.write(
-        "The gated fusion head learns a dynamic mixing weight between the CamemBERT and CLIP embeddings "
-        "at inference time. For each input the gate produces a scalar g ∈ [0, 1] and the fused "
-        "representation is: z = g · z_text + (1 − g) · z_image. This lets the model rely more on "
-        "the text branch for text-rich products and more on the image branch for visually distinctive ones."
+`g = sigmoid(MLP([text, image]))`
+
+The fused representation is computed as:
+
+`fused = g * image + (1 - g) * text`
+
+Finally, the model concatenates the fused vector with the original text and image vectors:
+
+`final = [fused, text, image]  →  2304d  →  classifier  →  27 classes`
+
+The gate learns how much to rely on text versus image information **per feature dimension**.
+        """
     )
 
     st.subheader("Staged unfreezing strategy")
-    st.write(
-        "To avoid training divergence, all CamemBERT + CLIP runs used a three-stage approach: "
-        "start with frozen backbones to warm up the new layers, then gradually open more layers."
-    )
-    unfreeze_df = pd.DataFrame([
-        {"Stage": "Stage 1 — Head only", "Layers unfrozen": "Classification / fusion head", "Purpose": "Warm up the new layers without disturbing pretrained weights."},
-        {"Stage": "Stage 2 — Partial", "Layers unfrozen": "Top transformer blocks of both encoders", "Purpose": "Adapt higher-level features to the product domain."},
-        {"Stage": "Stage 3 — Full unfreeze", "Layers unfrozen": "All layers", "Purpose": "End-to-end fine-tuning for maximum task adaptation."},
-    ])
-    render_html_table(unfreeze_df, max_width="900px")
 
-    st.subheader("Best model — mm_camembert_clip_aug_gatedfusion_unfreeze")
-    st.write(
-        "The best CLIP-based model improves on the plain gated fusion in three ways:"
+    st.markdown(
+        """
+Training proceeds in three stages to avoid catastrophic forgetting of the pretrained backbones.
+        """
     )
-    improvement_df = pd.DataFrame([
+
+    unfreeze_df = pd.DataFrame([
         {
-            "Improvement": "Shared projection space",
-            "Detail": "Both CamemBERT (768-dim) and CLIP ViT-B/32 (768-dim) are projected to a common 512-dim space "
-                      "via Linear → LayerNorm → GELU before fusion. This normalises the scale of both modalities "
-                      "and gives the gate a cleaner signal to work with.",
+            "Stage": "Stage 1 — Head only",
+            "Trainable layers": "Gate + classifier",
+            "Backbones": "Frozen",
+            "Purpose": "Warm up the new fusion layers without disturbing pretrained weights.",
         },
         {
-            "Improvement": "Softmax gate (2-way)",
-            "Detail": "Instead of a per-dimension sigmoid gate (768 scalars), the model outputs two scalar weights "
-                      "(w_text, w_image) via softmax. The fused vector is z = w_text · t_proj + w_image · v_proj. "
-                      "This is more interpretable: at inference time you can directly read off how much the model "
-                      "relied on text vs. image for each product.",
+            "Stage": "Stage 2 — Partial unfreeze",
+            "Trainable layers": "Gate + classifier + last 2 encoder blocks",
+            "Backbones": "Partially unfrozen",
+            "Purpose": "Adapt high-level text and image features to the product domain.",
         },
         {
-            "Improvement": "Image augmentation + label smoothing",
-            "Detail": "Training images are randomly flipped, colour-jittered and slightly affine-transformed. "
-                      "Label smoothing (ε = 0.1) prevents overconfident predictions and improves calibration. "
-                      "Together these reduce overfitting compared to the no-augmentation baseline.",
+            "Stage": "Stage 3 — Full unfreeze",
+            "Trainable layers": "All layers",
+            "Backbones": "Fully unfrozen",
+            "Purpose": "End-to-end fine-tuning for maximum task adaptation.",
         },
     ])
-    render_html_table(improvement_df, max_width="1000px")
+    render_html_table(unfreeze_df, max_width="950px")
+
+    st.subheader("Results")
+
+    gate_results = [
+        {"Model": "CamemBERT+CLIP frozen",   "Training": "Frozen",          "Accuracy": 0.877, "Macro F1": 0.864, "best": False},
+        {"Model": "CamemBERT+CLIP staged ★", "Training": "Staged unfreeze", "Accuracy": 0.875, "Macro F1": 0.864, "best": True},
+    ]
+    rows_html = ""
+    for r in gate_results:
+        bg = "#f0fdf4" if r["best"] else "white"
+        fw = "700" if r["best"] else "400"
+        rows_html += (
+            f'<tr style="background:{bg};">'
+            f'<td style="font-weight:{fw};white-space:nowrap;">{r["Model"]}</td>'
+            f'<td>{r["Training"]}</td>'
+            f'<td style="text-align:center;font-weight:{fw};color:#1d4ed8;">{r["Accuracy"]:.3f}</td>'
+            f'<td style="text-align:center;font-weight:{fw};color:#065f46;">{r["Macro F1"]:.3f}</td>'
+            f'</tr>'
+        )
+    st.markdown(f"""
+    <div style="overflow-x:auto; margin:0.5rem 0 1.2rem 0;">
+    <table style="border-collapse:collapse; font-size:0.92rem; width:auto; min-width:480px;">
+      <thead>
+        <tr style="background:#f1f5f9; color:#475569; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.04em;">
+          <th style="padding:0.5rem 0.8rem; text-align:left; border-bottom:2px solid #e2e8f0;">Model</th>
+          <th style="padding:0.5rem 0.8rem; text-align:left; border-bottom:2px solid #e2e8f0;">Training</th>
+          <th style="padding:0.5rem 0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">Accuracy</th>
+          <th style="padding:0.5rem 0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">Macro F1</th>
+        </tr>
+      </thead>
+      <tbody>{rows_html}</tbody>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.info("Frozen and staged-unfreeze versions reached almost identical Macro F1 (0.864). "
+            "The main gain came later with augmentation and softmax gating — see the CLIP Models page.")
+
+elif page == "6.1.3 CLIP Models":
+    st.title("Rakuten Multimodal Product Data Classification")
+    st.header("6.1.3 CLIP Models")
+    st.markdown(
+        """
+CLIP (`openai/clip-vit-base-patch32`) learns visual and textual representations in a shared embedding space.
+It was pretrained on large-scale image-text pairs, which makes its image encoder a strong general-purpose
+feature extractor for product images.
+
+However, CLIP's built-in text encoder is not ideal for this dataset. It was mainly designed for English prompts
+and is limited to 77 tokens, while Rakuten product descriptions are in French and often longer.
+
+For this reason, we kept the CLIP Vision encoder for image understanding and replaced the text branch with
+CamemBERT, which is pretrained on French text. This combines strong visual features from CLIP with stronger
+French-language understanding from CamemBERT.
+        """
+    )
+
+    _clip_arch = APP_DIR / "images" / "CLIP_model_arch.png"
+    if _clip_arch.exists():
+        col, _ = st.columns([0.6, 0.4])
+        col.image(str(_clip_arch), use_container_width=True)
+
+    _clip_types = APP_DIR / "images" / "CLIP_model_types.png"
+    if _clip_types.exists():
+        col, _ = st.columns([0.6, 0.4])
+        col.image(str(_clip_types), use_container_width=True)
+
+    clip_chart = APP_DIR / "images" / "clip_model_comparison.png"
+    if clip_chart.exists():
+        col, _ = st.columns([0.6, 0.4])
+        col.image(str(clip_chart), use_container_width=True)
 
     st.subheader("Key findings")
+
     st.markdown(
         """
-        - CLIP alone (frozen, CLIP text encoder) reaches macro F1 ≈ 0.67 — below the CamemBERT text-only baseline — because the CLIP text encoder was not designed for French product descriptions.
-        - Replacing the CLIP text encoder with CamemBERT while keeping the CLIP image encoder gives a substantial jump: gated fusion with frozen branches reaches macro F1 ≈ 0.864.
-        - The CLIP ViT-B/32 image encoder produces richer features than a CNN trained from scratch (macro F1 0.67 vs 0.51 for CNN I1), confirming the value of large-scale vision pretraining.
-        - Adding a shared projection space, a softmax gate, image augmentation and label smoothing raises accuracy to 0.892 and macro F1 to 0.880 — a +1.6 pp gain over the plain staged-unfreeze baseline.
-        - Staged unfreezing was essential for stability: direct full unfreezing caused training divergence in early experiments.
+CLIP-based models were multimodal in architecture, but mostly text-dominated in practice.
+
+CLIP alone performed weaker because its text encoder is designed for short, mostly English image-text pairs. Rakuten descriptions are French and often longer, so CLIP's 77-token text limit became a bottleneck.
+
+Replacing CLIP text with CamemBERT improved performance strongly, from about 0.672 to 0.864 macro F1. Since the CLIP vision encoder stayed the same, this shows that the main limitation was the text branch.
+
+Frozen and staged-unfreeze models performed almost the same because CamemBERT already captured most category information. The image branch added only a very small gain, around +0.002 macro F1.
+
+The best CLIP-based model reached 0.880 macro F1, mainly due to better projection, softmax gating, augmentation, and label smoothing — not unfreezing alone.
+
+The best overall result was ConvNeXt + CamemBERT late fusion, reaching 0.891 macro F1. This suggests that ConvNeXt provided more useful product-image features than CLIP Vision.
         """
     )
 
-    st.subheader("Why frozen and staged-unfreeze scored almost the same")
-    st.markdown(
-        """
-        > **Discriminative** means how well the features produced by a model can separate different classes.
-        > If a frozen model already produces highly discriminative features, unfreezing adds little benefit.
-        """
+    st.success(
+        "Takeaway: For this dataset, text is very strong. CLIP gating was technically multimodal, but mostly relied on CamemBERT. "
+        "The strongest model used CamemBERT for French text and ConvNeXt for product images."
     )
-    param_df = pd.DataFrame([
-        {"": "Training samples", "Value": "18 000"},
-        {"": "CamemBERT parameters", "Value": "110 000 000"},
-        {"": "CLIP ViT-B/32 parameters", "Value": "86 000 000"},
-        {"": "Total backbone parameters", "Value": "196 000 000"},
-        {"": "Ratio (samples / parameters)", "Value": "~1 sample per 10 900 parameters"},
-    ])
-    render_html_table(param_df, max_width="600px")
-    st.markdown(
-        """
-        With only 18K samples and ~196M backbone parameters, fully unfreezing the backbones risks overfitting badly.
-        Both CamemBERT (pretrained on French) and CLIP ViT (pretrained on 400M images) already produce features
-        that are discriminative enough for product classification — the gate and classifier head on top
-        can learn to combine them without touching the backbone weights.
-        The +1.6 pp gain in the best model came not from unfreezing alone, but from **regularization**:
-        image augmentation and label smoothing kept the full fine-tuning stable and generalizable.
-        """
-    )
-
 elif page == "6.2 Best model — Summary":
     st.title("Rakuten Multimodal Product Data Classification")
     st.header("6.2 Best model — Summary")
