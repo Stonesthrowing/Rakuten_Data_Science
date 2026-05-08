@@ -584,14 +584,14 @@ def format_value(value):
 
 
 def placeholder_page(title):
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header(title)
     st.info("This chapter is intentionally left blank in this presentation version.")
 
 
 def render_prediction_tool():
     """Render the standalone Prediction page inside this custom navigation app."""
-    prediction_page = APP_DIR / "prediction_tool.py"
+    prediction_page = APP_DIR /"pages" / "6_Prediction.py"
     if not prediction_page.exists():
         st.error(f"Prediction page not found: {prediction_page}")
         return
@@ -1058,16 +1058,14 @@ NAV_LEVELS = {
     "5.2 ResNet Models": 1,
     "5.3 ConvNeXt Models": 1,
     "5.3.2 Interpretability": 2,
-    "5.4 Image Modeling Conclusion": 1,
     "6. Multimodal": 0,
     "6.1.1 Simple Fusion": 1,
     "6.1.2 Intermediate Fusion": 1,
-    "6.1.3 Gated Fusion": 1,
-    "6.1.4 CLIP Models": 1,
+    "6.1.3 CLIP Models": 1,
     "6.2 Best model — Summary": 1,
-    "6.4 Multimodal Conclusion": 1,
+    "6.1 Conclusion": 1,
     "7. Prediction Tool": 0,
-    "8. Project Conclusions" : 0,
+    "8. Conclusions" : 0,
 }
 NAV_DISPLAY = {
     "1. Overview": "Overview",
@@ -1084,20 +1082,18 @@ NAV_DISPLAY = {
     "4.21 CamemBERT vs TF-IDF" : "vs TF-IDF",
     "5. Image Modeling": "Image Modeling",
     "5.1 CNN Models": "CNN Models",
-    "5.1 Conclusion": "Data Augmentation",
+    "5.1 Conclusion": "Overview Image Models",
     "5.2 ResNet Models": "ResNet Models",
     "5.3 ConvNeXt Models": "ConvNeXt Models",
     "5.3.2 Interpretability": "Error Analysis & Grad-CAM",
-    "5.4 Image Modeling Conclusion": "Image Modeling Conclusion",
     "6. Multimodal": "Multimodal",
     "6.1.1 Simple Fusion": "Simple Fusion",
     "6.1.2 Intermediate Fusion": "Intermediate Fusion",
-    "6.1.3 Gated Fusion": "Gated Fusion",
-    "6.1.4 CLIP Models": "CLIP Models",
-    "6.3 Best model — Summary": "Best model — Summary",
-    "6.4 Conclusion": "Conclusion Multimodal models",
+    "6.1.3 CLIP Models": "CLIP Models",
+    "6.2 Best model — Summary": "Best model — Summary",
+    "6.1 Conclusion": "Conclusion Multimodal models",
     "7. Prediction Tool": "Prediction Tool",
-    "8. Project Conclusions" : "Conclusions",
+    "8. Conclusions" : "Conclusions",
 }
 NAV_ITEMS = list(NAV_LEVELS.keys())
 DEFAULT_PAGE = "1. Overview"
@@ -1399,7 +1395,7 @@ elif page == "1.1 Workflow":
     )
 
 elif page == "5. Image Modeling":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("5. Image Modeling")
     st.write(
         "Classifying Rakuten product listings by image alone is harder than it looks: the same category "
@@ -1411,12 +1407,12 @@ elif page == "5. Image Modeling":
 
     st.subheader("Modeling approach")
     approach_rows = pd.DataFrame([
-        {"Step": "1", "Area": "CNN baselines from scratch",        "Variants": "128 px · no aug  |  128 px · aug  |  256 px · no aug",                                                         "Purpose": "Establish a lower-bound reference trained purely on this dataset, with no pretrained features."},
-        {"Step": "2", "Area": "ResNet transfer learning",          "Variants": "Frozen · no aug  |  Partial unfreeze  |  Full unfreeze  |  From scratch  |  ResNet101 · frozen",           "Purpose": "Bring in ImageNet-pretrained representations and compare frozen vs. fine-tuned strategies."},
-        {"Step": "3", "Area": "Upgrade to modern vision architectures (EfficientNet, ConvNeXt, DINOv2)", "Variants": "B0 · no aug  |  B0 · aug  |  ConvNeXt-Tiny  |  ConvNeXt-Base  |  DINOv2 · frozen", "Purpose": "Evaluate higher-capacity backbones for richer image representations."},
-        {"Step": "4", "Area": "Best image branch selection",       "Variants": "ConvNeXt-Base · full unfreeze",                                                                             "Purpose": "Pick the strongest image model to carry forward into multimodal fusion."},
+        {"Step": "1", "Area": "CNN baselines from scratch", "Purpose": "Establish a lower-bound reference trained purely on this dataset, with no pretrained features."},
+        {"Step": "2", "Area": "ResNet transfer learning", "Purpose": "Bring in ImageNet-pretrained representations and compare frozen vs. fine-tuned strategies."},
+        {"Step": "3", "Area": "Stronger pretrained architectures", "Purpose": "Evaluate EfficientNet, ConvNeXt, and DINOv2 as higher-capacity backbones."},
+        {"Step": "4", "Area": "Best image branch selection", "Purpose": "Pick the strongest image model to carry forward into multimodal fusion."},
     ])
-    render_html_table(approach_rows, max_width="1000px")
+    render_html_table(approach_rows, max_width="900px")
 
     st.subheader("Data augmentation")
     st.write(
@@ -1458,12 +1454,8 @@ elif page == "5. Image Modeling":
         "with no pretrained weights and no augmentation."
     )
 
-    _cmp_img = APP_DIR / "images" / "image_model_comparison_macro.png"
-    if _cmp_img.exists():
-        st.image(str(_cmp_img), width=520)
-
 elif page == "5.1 CNN Models":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("5.1 CNN Models")
     st.write(
         "All three CNN baselines use the same custom architecture, trained on this dataset alone — "
@@ -1471,85 +1463,143 @@ elif page == "5.1 CNN Models":
         "and augmentation to understand what a fully scratch-trained model can learn."
     )
 
-    _col_arch, _col_setup = st.columns(2)
-    with _col_arch:
-        st.subheader("Architecture")
-        arch_df = pd.DataFrame([
-            {"Layer": "Conv block 1", "Details": "Conv2D(32) → BN → ReLU → MaxPool"},
-            {"Layer": "Conv block 2", "Details": "Conv2D(64) → BN → ReLU → MaxPool"},
-            {"Layer": "Conv block 3", "Details": "Conv2D(128) → BN → ReLU → MaxPool"},
-            {"Layer": "Conv block 4", "Details": "Conv2D(256) → BN → ReLU → MaxPool"},
-            {"Layer": "Pooling",      "Details": "AdaptiveAvgPool2d → Flatten"},
-            {"Layer": "Head",         "Details": "Linear(512) → ReLU → Dropout(0.5) → Linear(27)"},
-        ])
-        render_html_table(arch_df, max_width="100%")
-
-    with _col_setup:
-        st.subheader("Training setup")
-        setup_df = pd.DataFrame([
-            {"Setting": "Loss",          "Value": "Cross-entropy"},
-            {"Setting": "Optimizer",     "Value": "Adam"},
-            {"Setting": "Learning rate", "Value": "1e-3 + ReduceLROnPlateau"},
-            {"Setting": "Batch size",    "Value": "64"},
-            {"Setting": "Early stop",    "Value": "Patience 5–10 epochs"},
-            {"Setting": "Hardware",      "Value": "Tesla T4 (Google Colab)"},
-        ])
-        render_html_table(setup_df, max_width="100%")
+    st.subheader("Architecture")
+    st.write(
+        "Each CNN baseline follows the same general pattern: a stack of convolutional blocks "
+        "(Conv2D → BatchNorm → ReLU → MaxPool), followed by global average pooling and a fully connected "
+        "classification head with dropout. The depth and filter sizes were kept moderate to allow training "
+        "on a single GPU within a reasonable time budget."
+    )
+    arch_df = pd.DataFrame([
+        {"Layer block": "Conv block 1", "Details": "Conv2D(32) → BatchNorm → ReLU → MaxPool(2×2)"},
+        {"Layer block": "Conv block 2", "Details": "Conv2D(64) → BatchNorm → ReLU → MaxPool(2×2)"},
+        {"Layer block": "Conv block 3", "Details": "Conv2D(128) → BatchNorm → ReLU → MaxPool(2×2)"},
+        {"Layer block": "Conv block 4", "Details": "Conv2D(256) → BatchNorm → ReLU → MaxPool(2×2)"},
+        {"Layer block": "Global pooling", "Details": "AdaptiveAvgPool2d → Flatten"},
+        {"Layer block": "Classifier head", "Details": "Linear(512) → ReLU → Dropout(0.5) → Linear(27 classes)"},
+    ])
+    render_html_table(arch_df, max_width="860px")
 
     st.subheader("Results")
-    _cnn_img = APP_DIR / "images" / "cnn_results.png"
-    if _cnn_img.exists():
-        st.image(str(_cnn_img), width=650)
+    cnn_df = pd.DataFrame([r for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"])
+    cnn_labels = [IMAGE_MODEL_LABELS.get(r["Model"], r["Model"]) for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"]
+    cnn_acc = [float(r["Accuracy"]) for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"]
+    cnn_f1  = [float(r["Macro F1"])  for r in IMAGE_MODEL_RESULTS if r["Family"] == "CNN baseline"]
+    x = range(len(cnn_labels))
+    fig, ax = plt.subplots(figsize=(4.5, 2.6))
+    bars_acc = ax.bar([i - 0.18 for i in x], cnn_acc, width=0.32, label="Accuracy", color="#6366f1")
+    bars_f1  = ax.bar([i + 0.18 for i in x], cnn_f1,  width=0.32, label="Macro F1",  color="#a5b4fc")
+    for bar in bars_acc:
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.004,
+                f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=6.5, color="#3730a3")
+    for bar in bars_f1:
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.004,
+                f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=6.5, color="#4b5563")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(cnn_labels, fontsize=7)
+    ax.set_ylim(0.45, 0.62)
+    ax.set_ylabel("Score", fontsize=7)
+    ax.legend(fontsize=7)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=False)
+    plt.close(fig)
 
-    st.success(
-        "**Effect of resolution:** Higher resolution helped only slightly — I3 (256 px) gained < 0.01 macro F1 over I1 (128 px) at the cost of longer training time.\n\n"
-        "**Effect of augmentation:** Augmentation did not improve performance — I2 (augmented) scored lower than I1 (no aug); synthetic transforms removed the stable visual cues the model relies on.\n\n"
-        "**Limited data is the bottleneck** — with few examples per class, scratch-trained CNNs cannot build competitive visual representations.\n\n"
-        "**Best CNN: I3 · macro F1 ≈ 0.509**\n\n"
-        "**Frozen ResNet50 already surpassed every CNN: macro F1 ≈ 0.554** — a backbone never fine-tuned on product images outperformed a network trained entirely on Rakuten data, confirming that transfer learning is the right direction."
+    st.subheader("Training setup")
+    setup_df = pd.DataFrame([
+        {"Setting": "Loss function", "Value": "Cross-entropy"},
+        {"Setting": "Optimizer", "Value": "Adam"},
+        {"Setting": "Learning rate", "Value": "1e-3 (with ReduceLROnPlateau)"},
+        {"Setting": "Batch size", "Value": "64"},
+        {"Setting": "Early stopping", "Value": "Patience 5–10 epochs on validation loss"},
+        {"Setting": "Hardware", "Value": "Tesla T4 (Google Colab)"},
+    ])
+    render_html_table(setup_df, max_width="700px")
+
+    st.subheader("Effect of resolution")
+    st.write(
+        "Model I3 uses a 256 × 256 input instead of 128 × 128. The higher resolution gave a small "
+        "accuracy improvement (+0.0021 on macro F1 vs. I1), suggesting that finer spatial details in "
+        "product images carry some signal, but the gain was modest and came at the cost of longer training time."
+    )
+
+    st.subheader("Effect of augmentation")
+    st.write(
+        "Model I2 applies moderate augmentation at 128 × 128. Counter-intuitively, accuracy and macro F1 "
+        "were marginally lower than the no-augmentation baseline (I1). This is consistent with the broader "
+        "finding across all image experiments: the product-image dataset already contains substantial natural "
+        "variety, so aggressive synthetic transformations can remove the stable visual cues the model needs "
+        "rather than improving generalization."
+    )
+
+    st.subheader("Key takeaways")
+    st.markdown(
+        """
+        - Training from scratch limits what the model can learn from the limited number of images per class.
+        - Even the strongest CNN baseline (I3, macro F1 ≈ 0.509) sits clearly below frozen ResNet50 (I5, macro F1 ≈ 0.554).
+        - Pretrained features from ImageNet-scale training provide richer visual representations than a network can learn from this dataset alone.
+        - The CNN experiments confirm that transfer learning is the right direction, motivating the ResNet and ConvNeXt experiments that follow.
+        """
+    )
+    st.write(
+        "The CNN experiments established one clear finding: learning visual features from scratch is not competitive on this dataset. "
+        "The best CNN (I3, macro F1 0.509) falls well below a frozen ResNet50 that was never fine-tuned on product images at all (I5, macro F1 0.554) — "
+        "meaning a backbone trained only on ImageNet already outperforms a network trained directly on Rakuten data. "
+        "The bottleneck is data volume: with limited examples per class, a scratch-trained network has to invent visual concepts rather than refine existing ones. "
+        "Transfer learning — bringing in representations already built from millions of images, then adapting them to Rakuten products — was the logical next step."
     )
 
 elif page == "5.1 Conclusion":
-    st.title("Rakuten Multimodal Product Classification")
-    st.header("5.1 Data Augmentation")
+    st.title("Rakuten Multimodal Product Data Classification")
+    st.header("5.1 Overview Image Models")
     st.write(
-        "Before training, each image passes through a pipeline that resizes, optionally augments, and normalises the input. "
-        "Augmentation creates synthetic variations on the fly — flipping, random cropping, mild brightness shifts — "
-        "so the model learns to recognise the *product category*, not memorise a specific photo."
+        "Before diving into each model family, this page gives a full picture of all image-only experiments "
+        "in one place. The table below covers every model from the simplest scratch-trained CNN to the final "
+        "ConvNeXt-Base, letting you compare architectures, training strategies, and validation scores at a glance."
     )
 
-    st.subheader("Augmentation pipeline stages")
-    render_html_table(pd.DataFrame([
-        {"Stage": "1. Resize / crop",      "What happens": "Image is scaled to the model's input size (128², 224², or 256²). With augmentation a random region is cropped first, so the model sees different framings each epoch."},
-        {"Stage": "2. Geometric transforms","What happens": "Random horizontal flips and, in stronger setups, small rotations or translations. These simulate natural variation in product photography angles."},
-        {"Stage": "3. Color transforms",   "What happens": "Mild adjustments to brightness, contrast, saturation, or hue. ConvNeXt runs use TrivialAugmentWide, which picks one random policy per image."},
-        {"Stage": "4. Normalise",          "What happens": "Pixel values are rescaled to the range expected by the backbone — ImageNet mean/std (0.485/0.229, 0.456/0.224, 0.406/0.225) for pretrained models."},
-    ]), max_width="950px")
+    results_df = pd.DataFrame(IMAGE_MODEL_RESULTS)
+    display_df = results_df.copy().replace({None: "—"})
+    display_df["Variant"] = display_df["Model"].map(IMAGE_MODEL_LABELS).fillna(display_df["Model"])
+    grouped_cols = ["Family", "Variant", "Image size", "Training strategy", "Augmentation",
+                    "Accuracy", "Macro F1", "Weighted F1", "Best epoch", "Hardware / time"]
+    display_df = display_df[[c for c in grouped_cols if c in display_df.columns]]
+    st.subheader("Image model comparison")
+    render_grouped_html_table(display_df, group_col="Family")
+
+    st.subheader("Key findings across all experiments")
     st.markdown(
         """
-        **Applied in:**
-        - I2 — CNN · aug
-        - I6 — ResNet50 · partial unfreeze
-        - I7 — ResNet50 · full unfreeze
-        - I8 — ResNet50 · from scratch
-        - I9 — ConvNeXt-Tiny
-        - I11 — EfficientNetB0 · aug
-        - I12 — ConvNeXt-Base
-        - I13 — DINOv2 · timm transform
+        - **Transfer learning is essential.** A frozen ResNet50 (I5, F1 0.554) already outperforms the best
+          scratch-trained CNN (I3, F1 0.509), even though the ResNet backbone was never updated on product images.
+          With ~2 500 training examples per class, there simply is not enough data to learn competitive visual
+          features from scratch.
+        - **Fine-tuning on top of pretrained weights pays off.** Unlocking the top residual block (I6, +0.087)
+          and then the full network (I7, +0.012) progressively improved ResNet50 — but the gains diminish quickly,
+          suggesting a ceiling for this architecture.
+        - **Architecture upgrade matters more than further fine-tuning.** Switching from ResNet50 to
+          ConvNeXt-Tiny (I9) immediately adds +0.032 macro F1 over the best ResNet — a larger jump than any
+          tuning change within the ResNet family.
+        - **Scale and differential learning rates seal the win.** ConvNeXt-Base (I12, F1 0.692) beats
+          ConvNeXt-Tiny (I9, F1 0.685) with a backbone LR 10× lower than the head, protecting pretrained
+          features while the head adapts — and continues improving through all 20 epochs without overfitting.
+        - **Image-only performance has a ceiling.** Even at F1 0.692, many visually similar categories
+          (toys, board games, hobby figurines) remain confused. Text descriptions resolve these ambiguities
+          trivially — which is the motivation for the multimodal fusion in Chapter 6.
         """
     )
 
-    st.subheader("Why we chose moderate augmentation")
-    st.markdown(
-        """
-        - **Heavy augmentation failed in practice.** A stronger setup caused validation accuracy to collapse to ~0.21 and training accuracy to ~0.17 — early stopping triggered after just three epochs.
-        - **Product images are catalog-style.** Rakuten listings are mostly upright, centered, and photographed under controlled conditions. Large rotations, heavy crops, or aggressive colour distortion produce unrealistic examples the model was never meant to see.
-        - **Natural variety already exists.** The dataset spans 27 categories with genuine visual diversity. Excessive synthetic variation adds noise on top of that diversity, making class boundaries less stable rather than more robust.
-        - **Moderate augmentation is the right balance.** Random crop, horizontal flip, and mild colour jitter add just enough variation to reduce overfitting — without destroying the shape, packaging, and colour cues the model depends on for classification.
-        """
+    st.write(
+        "The following pages walk through each model family in detail. "
+        "**5.1 CNN Models** establishes the scratch-trained baseline and explains why transfer learning is unavoidable. "
+        "**5.2 ResNet Models** explores frozen, partial, and full fine-tuning strategies on a 25 M-parameter backbone. "
+        "**5.3 ConvNeXt Models** shows how a modernised architecture and differential learning rates push past the ResNet ceiling "
+        "and identifies ConvNeXt-Base (I12) as the image branch for multimodal fusion."
     )
 elif page == "5.2 ResNet Models":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("5.2 ResNet Models")
     st.write(
         "ResNet50 brings residual (skip) connections to a 50-layer deep network: instead of each block "
@@ -1723,7 +1773,7 @@ elif page == "5.2 ResNet Models":
     )
 
 elif page == "5.3 ConvNeXt Models":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("5.3 ConvNeXt Models")
     st.write(
         "ConvNeXt is a pure convolutional network whose design was systematically modernised by borrowing "
@@ -1918,42 +1968,8 @@ elif page == "5.3 ConvNeXt Models":
         """
     )
 
-elif page == "5.4 Image Modeling Conclusion":
-    st.title("Rakuten Multimodal Product Classification")
-    st.header("5.4 Image Modeling Conclusion")
-    st.write(
-        "This page gives a full picture of all image-only experiments in one place. "
-        "The table below covers every model from the simplest scratch-trained CNN to the final "
-        "ConvNeXt-Base, letting you compare architectures, training strategies, and validation scores at a glance."
-    )
-
-    results_df = pd.DataFrame(IMAGE_MODEL_RESULTS)
-    display_df = results_df.copy().replace({None: "—"})
-    display_df["Variant"] = display_df["Model"].map(IMAGE_MODEL_LABELS).fillna(display_df["Model"])
-    grouped_cols = ["Family", "Variant", "Image size", "Training strategy", "Augmentation",
-                    "Accuracy", "Macro F1", "Weighted F1", "Best epoch", "Hardware / time"]
-    display_df = display_df[[c for c in grouped_cols if c in display_df.columns]]
-    st.subheader("Image model comparison")
-    render_grouped_html_table(display_df, group_col="Family")
-
-    st.subheader("Key findings")
-    st.markdown(
-        """
-        - **Transfer learning is essential.** A frozen ResNet50 (I5, F1 0.554) already outperforms the best
-          scratch-trained CNN (I3, F1 0.509), even without updating the backbone on product images.
-        - **Fine-tuning pays off.** Unlocking the top residual block (I6, +0.087) and then the full network
-          (I7, +0.012) progressively improved ResNet50 — but gains diminish quickly, suggesting a ceiling.
-        - **Architecture upgrade matters more than further fine-tuning.** ConvNeXt-Tiny (I9) immediately adds
-          +0.032 macro F1 over the best ResNet — a larger jump than any tuning change within the ResNet family.
-        - **Scale and differential learning rates seal the win.** ConvNeXt-Base (I12, F1 0.692) uses a backbone
-          LR 10× lower than the head, protecting pretrained features while the head adapts.
-        - **Image-only performance has a ceiling.** Even at F1 0.692, visually similar categories
-          (toys, board games, hobby figurines) remain confused — resolved by multimodal fusion in Chapter 6.
-        """
-    )
-
 elif page == "5.3.2 Interpretability":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("5.3.2 Error Analysis & Grad-CAM — ConvNeXt-Base")
     st.write(
         "This page analyses where ConvNeXt-Base (I12) succeeds and fails. "
@@ -2069,7 +2085,7 @@ elif page == "5.3.2 Interpretability":
 # ===================================================================
 
 elif page == "6. Multimodal":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("6. Multimodal")
     st.write(
         "The multimodal stage combines the best text branch (CamemBERT, full fine-tune) and the best image "
@@ -2104,7 +2120,7 @@ elif page == "6. Multimodal":
     render_html_table(pd.DataFrame(baseline_rows), max_width="600px")
 
 elif page == "6.1 Conclusion":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("6.1 Conclusion Multimodal models")
     st.write(
         "Both fusion models share the same frozen branches. The table below places them next to the best "
@@ -2168,7 +2184,7 @@ elif page == "6.1 Conclusion":
     )
 
 elif page == "6.1.1 Simple Fusion":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("6.1.1 Simple Fusion — Late Fusion")
     st.write(
         "Late Fusion is the simplest possible multimodal strategy: the text model and image model each "
@@ -2261,7 +2277,7 @@ elif page == "6.1.1 Simple Fusion":
     )
 
 elif page == "6.1.2 Intermediate Fusion":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("6.1.2 Intermediate Fusion — Learned Joint Classifier")
     st.write(
         "Intermediate Fusion goes one step further than Late Fusion: instead of blending "
@@ -2338,112 +2354,9 @@ elif page == "6.1.2 Intermediate Fusion":
         """
     )
 
-elif page == "6.1.3 Gated Fusion":
-    st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.3 Gated Fusion")
-
-    st.markdown(
-        """
-The gated fusion model combines CamemBERT (text) and CLIP Vision (image) at the **feature level**.
-Instead of simply concatenating the two embeddings, a small gating network learns how much to rely
-on text versus image for each sample.
-        """
-    )
-
-    st.subheader("Architecture")
-
-    st.markdown(
-        """
-CamemBERT produces a **768-dimensional** text embedding from the CLS token.
-CLIP Vision produces a **768-dimensional** image embedding from the pooled visual output.
-
-Both embeddings are L2-normalized and concatenated into a 1536-dimensional vector.
-A small gating network then learns a 768-dimensional gate vector:
-
-`g = sigmoid(MLP([text, image]))`
-
-The fused representation is computed as:
-
-`fused = g * image + (1 - g) * text`
-
-Finally, the model concatenates the fused vector with the original text and image vectors:
-
-`final = [fused, text, image]  →  2304d  →  classifier  →  27 classes`
-
-The gate learns how much to rely on text versus image information **per feature dimension**.
-        """
-    )
-
-    st.subheader("Staged unfreezing strategy")
-
-    st.markdown(
-        """
-Training proceeds in three stages to avoid catastrophic forgetting of the pretrained backbones.
-        """
-    )
-
-    unfreeze_df = pd.DataFrame([
-        {
-            "Stage": "Stage 1 — Head only",
-            "Trainable layers": "Gate + classifier",
-            "Backbones": "Frozen",
-            "Purpose": "Warm up the new fusion layers without disturbing pretrained weights.",
-        },
-        {
-            "Stage": "Stage 2 — Partial unfreeze",
-            "Trainable layers": "Gate + classifier + last 2 encoder blocks",
-            "Backbones": "Partially unfrozen",
-            "Purpose": "Adapt high-level text and image features to the product domain.",
-        },
-        {
-            "Stage": "Stage 3 — Full unfreeze",
-            "Trainable layers": "All layers",
-            "Backbones": "Fully unfrozen",
-            "Purpose": "End-to-end fine-tuning for maximum task adaptation.",
-        },
-    ])
-    render_html_table(unfreeze_df, max_width="950px")
-
-    st.subheader("Results")
-
-    gate_results = [
-        {"Model": "CamemBERT+CLIP frozen",   "Training": "Frozen",          "Accuracy": 0.877, "Macro F1": 0.864, "best": False},
-        {"Model": "CamemBERT+CLIP staged ★", "Training": "Staged unfreeze", "Accuracy": 0.875, "Macro F1": 0.864, "best": True},
-    ]
-    rows_html = ""
-    for r in gate_results:
-        bg = "#f0fdf4" if r["best"] else "white"
-        fw = "700" if r["best"] else "400"
-        rows_html += (
-            f'<tr style="background:{bg};">'
-            f'<td style="font-weight:{fw};white-space:nowrap;">{r["Model"]}</td>'
-            f'<td>{r["Training"]}</td>'
-            f'<td style="text-align:center;font-weight:{fw};color:#1d4ed8;">{r["Accuracy"]:.3f}</td>'
-            f'<td style="text-align:center;font-weight:{fw};color:#065f46;">{r["Macro F1"]:.3f}</td>'
-            f'</tr>'
-        )
-    st.markdown(f"""
-    <div style="overflow-x:auto; margin:0.5rem 0 1.2rem 0;">
-    <table style="border-collapse:collapse; font-size:0.92rem; width:auto; min-width:480px;">
-      <thead>
-        <tr style="background:#f1f5f9; color:#475569; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.04em;">
-          <th style="padding:0.5rem 0.8rem; text-align:left; border-bottom:2px solid #e2e8f0;">Model</th>
-          <th style="padding:0.5rem 0.8rem; text-align:left; border-bottom:2px solid #e2e8f0;">Training</th>
-          <th style="padding:0.5rem 0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">Accuracy</th>
-          <th style="padding:0.5rem 0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">Macro F1</th>
-        </tr>
-      </thead>
-      <tbody>{rows_html}</tbody>
-    </table>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.info("Frozen and staged-unfreeze versions reached almost identical Macro F1 (0.864). "
-            "The main gain came later with augmentation and softmax gating — see the CLIP Models page.")
-
-elif page == "6.1.4 CLIP Models":
-    st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.4 CLIP Models")
+elif page == "6.1.3 CLIP Models":
+    st.title("Rakuten Multimodal Product Data Classification")
+    st.header("6.1.3 CLIP Models")
     st.markdown(
         """
 CLIP (`openai/clip-vit-base-patch32`) is a model that learns images and text together:
@@ -2619,7 +2532,7 @@ CamemBERT under progressively more aggressive fine-tuning
     )
 
 elif page == "6.2 Best model — Summary":
-    st.title("Rakuten Multimodal Product Classification")
+    st.title("Rakuten Multimodal Product Data Classification")
     st.header("6.2 Best Multimodal Model — Simple Fusion")
 
     alpha    = mm_late_meta.get("best_alpha", "—")
