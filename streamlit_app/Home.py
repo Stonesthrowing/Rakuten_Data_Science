@@ -3364,7 +3364,7 @@ elif page == "8. Project Conclusions":
         "to a full multimodal fusion system combining CamemBERT and ConvNeXt-Base."
     )
 
-    _conclusion_img = APP_DIR / "images" / "project_conlusion.png"
+    _conclusion_img = APP_DIR / "images" / "project_conclusion.png"
     if _conclusion_img.exists():
         st.image(str(_conclusion_img), use_container_width=True)
 
