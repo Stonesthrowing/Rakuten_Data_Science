@@ -2291,6 +2291,14 @@ elif page == "6.4 Multimodal Conclusion":
             "Weighted F1": "0.905",
             "Notes": f"Best at epoch {mm_inter_meta.get('best_epoch', '—')}",
         },
+        {
+            "Model": "CLIP Gate Fusion",
+            "Approach": "Sigmoid gate — CamemBERT + CLIP Vision, aug + label smoothing",
+            "Accuracy": "0.8765",
+            "Macro F1": "0.8802",
+            "Weighted F1": "—",
+            "Notes": "Best at epoch 14 (stage 3 full unfreeze)",
+        },
     ]
     render_html_table(pd.DataFrame(comparison_rows))
 
