@@ -30,6 +30,7 @@ st.markdown(
         padding: 0.4rem 0.6rem;
         border-radius: 8px;
         border: 1px solid rgba(120,120,120,0.2);
+        margin-top: 2rem;
         margin-bottom: 0.5rem;
     }
     </style>
