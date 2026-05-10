@@ -285,6 +285,35 @@ def render_html_table(df, max_width="100%", compact=False):
     '''
     st.markdown(html, unsafe_allow_html=True)
 
+def render_html_table_with_highlights(df, max_width="100%", compact=False):
+    font = "1.02rem" if compact else "1.06rem"
+    pad = "0.45rem 0.6rem" if compact else "0.62rem 0.75rem"
+
+    html = df.to_html(index=False, escape=False)
+
+    html = f"""
+    <div class="table-scroll" style="max-width:{max_width}; overflow-x:auto; margin:0.35rem 0 1.0rem 0;">
+        {html}
+    </div>
+    <style>
+    .table-scroll table {{
+        width:100%;
+        border-collapse:collapse;
+    }}
+    .table-scroll th {{
+        background:#f7f8fa; color:#4b5563; font-weight:600; text-align:left;
+        border:1px solid #e5e7eb; padding:{pad}; font-size:{font}; line-height:1.35;
+        vertical-align:top; white-space:normal;
+    }}
+    .table-scroll td {{
+        border:1px solid #e5e7eb; padding:{pad}; font-size:{font}; line-height:1.35;
+        vertical-align:top; white-space:normal; color:#262730;
+    }}
+    </style>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
+
 
 def category_display(label):
     if pd.isna(label):
@@ -1137,8 +1166,9 @@ NAV_LEVELS = {
     "5.1 CNN Models": 1,
     "5.2 ResNet Models": 1,
     "5.3 ConvNeXt Models": 1,
-    "5.3.2 Interpretability": 2,
-    "5.4 Image Modeling Conclusion": 1,
+    "5.4 Best Image Model": 1,
+    "5.4.1 Interpretability": 2,
+    "5.5 Image Modeling Conclusion": 1,
     "6. Multimodal": 0,
     "6.1.1 Simple Fusion": 1,
     "6.1.2 Intermediate Fusion": 1,
@@ -1148,7 +1178,9 @@ NAV_LEVELS = {
     "6.4 Multimodal Conclusion": 1,
     "7. Prediction Tool": 0,
     "8. Project Conclusions": 0,
+    "9. Final Benchmark": 0,
 }
+
 NAV_DISPLAY = {
     "1. Overview": "Overview",
     "1.1 Workflow": "Workflow",
@@ -1167,8 +1199,9 @@ NAV_DISPLAY = {
     "5.1 Conclusion": "Data Augmentation",
     "5.2 ResNet Models": "ResNet Models",
     "5.3 ConvNeXt Models": "ConvNeXt Models",
-    "5.3.2 Interpretability": "Error Analysis & Grad-CAM",
-    "5.4 Image Modeling Conclusion": "Image Modeling Conclusion",
+    "5.4 Best Image Model": "Best Image Model",
+    "5.4.1 Interpretability": "Error Analysis & Grad-CAM",
+    "5.5 Image Modeling Conclusion": "Image Modeling Conclusion",
     "6. Multimodal": "Multimodal",
     "6.1.1 Simple Fusion": "Simple Fusion",
     "6.1.2 Intermediate Fusion": "Intermediate Fusion",
@@ -1178,6 +1211,7 @@ NAV_DISPLAY = {
     "6.4 Multimodal Conclusion": "Multimodal Conclusion",
     "7. Prediction Tool": "Prediction Tool",
     "8. Project Conclusions": "Project Conclusions",
+    "9. Final Benchmark": "Final Benchmark",
 }
 NAV_ITEMS = list(NAV_LEVELS.keys())
 DEFAULT_PAGE = "1. Overview"
@@ -1220,7 +1254,8 @@ section[data-testid="stSidebar"] h1 {
 .sidebar-nav {
     margin-top: 0.2rem;
     margin-bottom: 0.9rem;
-    max-height: calc(100vh - 100px);
+   # max-height: calc(100vh - 100px); # 
+    max-height: none; 
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -1294,7 +1329,7 @@ section[data-testid="stSidebar"] h1 {
 }
 </style>
 """
-@st.cache_data
+#@st.cache_data
 def _build_nav_html(active_page: str) -> str:
     items = [nav_css, '<div class="sidebar-nav">']
     for item in NAV_ITEMS:
@@ -1308,7 +1343,6 @@ def _build_nav_html(active_page: str) -> str:
     return "\n".join(items)
 
 st.sidebar.markdown(_build_nav_html(page), unsafe_allow_html=True)
-
 
 # -------------------------------------------------------------------
 # Blank report chapters
@@ -1463,72 +1497,26 @@ elif page == "5. Image Modeling":
     )
 
     st.subheader("Modeling approach")
+    red = lambda text: f"<span style='color:#C44E52; font-weight:600;'>{text}</span>"
+
     approach_rows = pd.DataFrame([
-        {"Step": "1", "Area": "CNN baselines from scratch",
-         "Variants": "128 px · no aug  |  128 px · aug  |  256 px · no aug",
-         "Purpose": "Establish a lower-bound reference trained purely on this dataset, with no pretrained features."},
-        {"Step": "2", "Area": "ResNet transfer learning",
-         "Variants": "Frozen · no aug  |  Partial unfreeze  |  Full unfreeze  |  From scratch  |  ResNet101 · frozen",
-         "Purpose": "Bring in ImageNet-pretrained representations and compare frozen vs. fine-tuned strategies."},
-        {"Step": "3", "Area": "Upgrade to modern vision architectures (EfficientNet, ConvNeXt, DINOv2)",
-         "Variants": "B0 · no aug  |  B0 · aug  |  ConvNeXt-Tiny  |  ConvNeXt-Base  |  DINOv2 · frozen",
-         "Purpose": "Evaluate higher-capacity backbones for richer image representations."},
-        {"Step": "4", "Area": "Best image branch selection", "Variants": "ConvNeXt-Base · full unfreeze",
-         "Purpose": "Pick the strongest image model to carry forward into multimodal fusion."},
+        {"Step": "1", "Area": f"CNN baselines {red('from scratch')}",
+        "Variants": "128 px · no aug  |  128 px · aug  |  256 px · no aug",
+        "Purpose": f"Establish a {red('lower-bound reference')} trained purely on this dataset, with no pretrained features."},
+        {"Step": "2", "Area": f"ResNet {red('transfer learning')}",
+        "Variants": "Frozen · no aug  |  Partial unfreeze  |  Full unfreeze  |  From scratch  |  ResNet101 · frozen",
+        "Purpose": f"Bring in {red('ImageNet-pretrained')} representations and compare frozen vs. fine-tuned strategies."},
+        {"Step": "3", "Area": f"Upgrade to {red('modern vision')} architectures (EfficientNet, ConvNeXt, DINOv2)",
+        "Variants": "B0 · no aug  |  B0 · aug  |  ConvNeXt-Tiny  |  ConvNeXt-Base  |  DINOv2 · frozen",
+        "Purpose": f"Evaluate {red('higher-capacity backbones')} for richer image representations."},
+        {"Step": "4", "Area": "Best image branch selection",
+        "Variants": "ConvNeXt-Base · full unfreeze",
+        "Purpose": "Pick the strongest image model to carry forward into multimodal fusion."},
     ])
-    render_html_table(approach_rows, max_width="1000px")
+    render_html_table_with_highlights(approach_rows, max_width="1000px")
 
-    st.subheader("Data augmentation")
-    st.write(
-        "Data augmentation is a training-time technique that creates synthetic variations of each image on the fly — "
-        "flipping it horizontally, cropping a random region, slightly shifting brightness or contrast — so the model "
-        "sees a wider range of examples without needing to collect more data. The goal is to teach the model "
-        "to recognise the *class*, not memorise the exact pixel arrangement of a specific photo."
-    )
-    st.write(
-        "Before each training batch, images pass through a transform pipeline:"
-    )
-    render_html_table(pd.DataFrame([
-        {"Stage": "1. Resize / crop",
-         "What happens": "Image is resized to the model's input size (128², 224², or 256²). With augmentation, a random region is cropped first so the model sees different framing each epoch."},
-        {"Stage": "2. Geometric transforms",
-         "What happens": "Random horizontal flips and, in stronger setups, small rotations or translations. These simulate the natural variation in how products are photographed."},
-        {"Stage": "3. Color transforms",
-         "What happens": "Mild adjustments to brightness, contrast, saturation, or hue. TrivialAugmentWide (used in ConvNeXt runs) selects one random policy per image."},
-        {"Stage": "4. Normalise",
-         "What happens": "Pixel values are scaled to the range expected by the backbone (ImageNet mean/std for pretrained models)."},
-    ]), max_width="950px")
 
-    st.subheader("Why we chose moderate augmentation")
-    st.write(
-        "We tested a stronger augmentation setup early on. Validation accuracy collapsed to ~0.21 and training "
-        "stopped after three epochs — a clear sign of over-distortion. "
-        "Rakuten product images are mostly catalog-style: upright, centered, and photographed under controlled conditions. "
-        "Aggressive geometric transforms produce unrealistic examples that destroy the stable visual cues "
-        "(shape, packaging layout, colour scheme) the model depends on. "
-        "Moderate augmentation — random crop, horizontal flip, mild colour jitter — adds just enough variety "
-        "to reduce overfitting without stripping the signal."
-    )
-    render_html_table(pd.DataFrame([
-        {"Level": "No augmentation", "Transforms applied": "Resize only", "Used in": "I1, I3, I5, I8b, I10"},
-        {"Level": "Moderate augmentation", "Transforms applied": "Random crop · horizontal flip · mild colour jitter",
-         "Used in": "I2, I6, I7, I8, I9, I11, I12"},
-        {"Level": "timm training transform",
-         "Transforms applied": "DINOv2 standard pipeline — timm create_transform(is_training=True)", "Used in": "I13"},
-        {"Level": "Heavy augmentation",
-         "Transforms applied": "Stronger geometric / color distortion — observed to cause underfitting in small scratch CNNs",
-         "Used in": "—"},
-    ]), max_width="860px")
 
-    st.write(
-        "With that foundation in place, the next pages walk through each model family. "
-        "We start from the simplest possible baseline: a convolutional network trained entirely from scratch, "
-        "with no pretrained weights and no augmentation."
-    )
-
-    _cmp_img = APP_DIR / "images" / "image_model_comparison_macro.png"
-    if _cmp_img.exists():
-        st.image(str(_cmp_img), width=520)
 
 elif page == "5.1 CNN Models":
     st.title("Rakuten Multimodal Product Classification")
@@ -1814,71 +1802,37 @@ elif page == "5.3 ConvNeXt Models":
         "and ConvNeXt-Base (I12) as the full-capacity model."
     )
 
-    st.subheader("What makes ConvNeXt different from CNN and ResNet?")
-    diff_df = pd.DataFrame([
-        {
-            "Design choice": "Kernel size",
-            "Custom CNN (I1–I3)": "3×3 conv stacks",
-            "ResNet50 (I5–I7)": "1×1 and 3×3 bottleneck",
-            "ConvNeXt (I9, I12)": "7×7 depthwise conv — each filter operates on one channel only, dramatically reducing parameters while keeping a large receptive field",
-        },
-        {
-            "Design choice": "Block structure",
-            "Custom CNN (I1–I3)": "Conv → BN → ReLU (repeated)",
-            "ResNet50 (I5–I7)": "Residual bottleneck — 1×1 → 3×3 → 1×1 + skip connection",
-            "ConvNeXt (I9, I12)": "Inverted bottleneck: expand channels first (1×1 pointwise ×4), then contract — opposite of ResNet, borrows from MobileNets and transformers",
-        },
-        {
-            "Design choice": "Normalisation",
-            "Custom CNN (I1–I3)": "BatchNorm",
-            "ResNet50 (I5–I7)": "BatchNorm",
-            "ConvNeXt (I9, I12)": "LayerNorm — applied once per block, not after every activation; more stable across small batch sizes",
-        },
-        {
-            "Design choice": "Activation function",
-            "Custom CNN (I1–I3)": "ReLU throughout",
-            "ResNet50 (I5–I7)": "ReLU throughout",
-            "ConvNeXt (I9, I12)": "GELU (Gaussian Error Linear Unit) — smoother gradient than ReLU, borrowed from transformer feed-forward layers",
-        },
-        {
-            "Design choice": "Downsampling",
-            "Custom CNN (I1–I3)": "MaxPool after each block",
-            "ResNet50 (I5–I7)": "Strided convolution in shortcut",
-            "ConvNeXt (I9, I12)": "Separate 2×2 strided LayerNorm + conv layers between stages — cleaner spatial reduction",
-        },
-        {
-            "Design choice": "Pretrained capacity",
-            "Custom CNN (I1–I3)": "None — trained from scratch",
-            "ResNet50 (I5–I7)": "~25 M params, ImageNet-1k weights",
-            "ConvNeXt (I9, I12)": "Tiny: ~28 M params · Base: ~89 M params — both with strong ImageNet-1k or 22k weights",
-        },
-    ])
-    render_html_table(diff_df, max_width="100%")
+    _col_arch, _col_setup = st.columns(2)
+    with _col_arch:
+        st.subheader("Architecture")
+        arch_cnxt_df = pd.DataFrame([
+            {"Stage": "Stem", "Details": "4×4 Conv (stride 4) → LayerNorm — aggressive downsampling replaces the early MaxPool"},
+            {"Stage": "Stage 1–4", "Details": "Stack of ConvNeXt blocks per stage (depths 3-3-9-3 Tiny, 3-3-27-3 Base)"},
+            {"Stage": "ConvNeXt block", "Details": "Depthwise 7×7 Conv → LayerNorm → Linear ×4 (expand) → GELU → Linear (contract) + residual"},
+            {"Stage": "Downsampling", "Details": "2×2 LayerNorm + strided Conv between stages (not inside blocks)"},
+            {"Stage": "Head", "Details": "Global AvgPool → LayerNorm → Linear(27 classes)"},
+        ])
+        render_html_table(arch_cnxt_df, max_width="100%")
 
-    st.subheader("Why move from ResNet to ConvNeXt?")
+    with _col_setup:
+        st.subheader("Training setup")
+        setup_cnxt_df = pd.DataFrame([
+            {"Setting": "Loss", "Value": "Cross-entropy + label smoothing 0.1"},
+            {"Setting": "Optimizer", "Value": "AdamW"},
+            {"Setting": "LR — I9 (Tiny)", "Value": "1e-4 flat (backbone + head)"},
+            {"Setting": "LR — I12 (Base)", "Value": "Backbone 5e-6 · Head 5e-5 (diff. LR)"},
+            {"Setting": "Batch size", "Value": "I9: 32 · I12: 16"},
+            {"Setting": "Scheduler", "Value": "ReduceLROnPlateau"},
+            {"Setting": "Epochs", "Value": "20 (no early stopping)"},
+            {"Setting": "Hardware", "Value": "RTX 5070 Ti"},
+        ])
+        render_html_table(setup_cnxt_df, max_width="100%")
+
     st.write(
-        "The ResNet experiments showed a clear ceiling: full fine-tuning of ResNet50 reached macro F1 0.653. "
-        "Three factors motivated switching to ConvNeXt:"
+        "**Why ConvNeXt after ResNet?** ResNet50 peaked at macro F1 0.653 — switching to ConvNeXt's "
+        "modernised design (7×7 depthwise conv, inverted bottleneck, GELU, LayerNorm) and stronger "
+        "ImageNet-22k pretraining immediately pushed that ceiling to 0.685 with ConvNeXt-Tiny alone."
     )
-    render_html_table(pd.DataFrame([
-        {"Reason": "Better pretrained representations",
-         "Detail": "ConvNeXt-Base is trained on a larger regime (ImageNet-22k → fine-tuned on 1k) and with better recipes (AdamW, cosine LR, label smoothing, Mixup). The starting weights already encode richer visual concepts than ResNet50's older training."},
-        {"Reason": "Larger receptive field per layer",
-         "Detail": "The 7×7 depthwise convolution captures spatial context that a 3×3 filter needs many layers to aggregate. For product images where shape and silhouette matter, this is directly useful."},
-        {"Reason": "More expressive with similar inference cost",
-         "Detail": "Depthwise separable convolutions mean ConvNeXt packs more capacity (89 M vs 25 M params) without a proportional increase in FLOPs — making it practical for fine-tuning on a single GPU."},
-    ]), max_width="960px")
-
-    st.subheader("Experiments overview")
-    exp_df = pd.DataFrame([
-        {"ID": "I9", "Backbone": "ConvNeXt-Tiny", "Params": "~28 M", "Augmentation": "Moderate",
-         "Unfrozen layers": "All", "LR (backbone / head)": "1e-4 / 1e-4", "Batch": "32", "Best epoch": "19",
-         "Val macro F1": "0.685"},
-        {"ID": "I12", "Backbone": "ConvNeXt-Base", "Params": "~89 M", "Augmentation": "Moderate",
-         "Unfrozen layers": "All", "LR (backbone / head)": "5e-6 / 5e-5", "Batch": "16", "Best epoch": "20",
-         "Val macro F1": "0.692"},
-    ])
-    render_html_table(exp_df, max_width="960px")
 
     st.subheader("Results")
     cnxt_models = [r for r in IMAGE_MODEL_RESULTS if r["Family"] == "ConvNeXt"]
@@ -1981,34 +1935,115 @@ elif page == "5.3 ConvNeXt Models":
     else:
         st.info("Training history files not found.")
 
+    st.info(
+        "ConvNeXt-Base (I12) is the best-performing image model. "
+        "See **5.4 Best Image Model** for a cross-architecture comparison (CNN vs ResNet vs ConvNeXt) "
+        "and a detailed analysis of why it wins, including Grad-CAM visualisations in **5.4.1 Error Analysis & Grad-CAM**."
+    )
+
+elif page == "5.4 Best Image Model":
+    st.title("Rakuten Multimodal Product Classification")
+    st.header("5.4 Best Image Model — ConvNeXt-Base (I12)")
+    st.write(
+        "Across all 13 image-only experiments — from scratch-trained CNNs to ResNets to ConvNeXt — "
+        "ConvNeXt-Base (I12) achieves the highest macro F1 and accuracy. "
+        "This page compares the best representative from each architecture family and explains "
+        "the key factors behind ConvNeXt-Base's win."
+    )
+
+    # ── Cross-architecture comparison chart ──────────────────────────────────
+    st.subheader("Comparison: best CNN · best ResNet · ConvNeXt-Tiny · ConvNeXt-Base")
+    st.write(
+        "The chart below shows the best model from each architecture family, "
+        "illustrating the progressive performance gains as architectures improve."
+    )
+    _best_models = [
+        {"label": "Best CNN\n(I3 — CNN 256 px)", "acc": 0.5767, "f1": 0.5090, "color_acc": "#f87171", "color_f1": "#fca5a5"},
+        {"label": "Best ResNet\n(I7 — ResNet50 full)", "acc": 0.6849, "f1": 0.6533, "color_acc": "#fb923c", "color_f1": "#fdba74"},
+        {"label": "ConvNeXt-Tiny\n(I9)", "acc": 0.7144, "f1": 0.6850, "color_acc": "#34d399", "color_f1": "#6ee7b7"},
+        {"label": "ConvNeXt-Base\n(I12) ★", "acc": 0.7200, "f1": 0.6924, "color_acc": "#059669", "color_f1": "#10b981"},
+    ]
+    _bm_labels = [m["label"] for m in _best_models]
+    _bm_acc = [m["acc"] for m in _best_models]
+    _bm_f1 = [m["f1"] for m in _best_models]
+    _bm_colors_acc = [m["color_acc"] for m in _best_models]
+    _bm_colors_f1 = [m["color_f1"] for m in _best_models]
+
+    _x = range(len(_bm_labels))
+    fig_bm, ax_bm = plt.subplots(figsize=(7, 3.2))
+    bars_bm_acc = ax_bm.bar([i - 0.18 for i in _x], _bm_acc, width=0.32, label="Accuracy", color=_bm_colors_acc)
+    bars_bm_f1 = ax_bm.bar([i + 0.18 for i in _x], _bm_f1, width=0.32, label="Macro F1", color=_bm_colors_f1)
+    for bar in bars_bm_acc:
+        ax_bm.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.004,
+                   f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=7, color="#1f2937")
+    for bar in bars_bm_f1:
+        ax_bm.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.004,
+                   f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=7, color="#374151")
+    ax_bm.set_xticks(list(_x))
+    ax_bm.set_xticklabels(_bm_labels, fontsize=7.5)
+    ax_bm.set_ylim(0.45, 0.78)
+    ax_bm.set_ylabel("Score", fontsize=8)
+    ax_bm.legend(fontsize=8)
+    ax_bm.spines[["top", "right"]].set_visible(False)
+    ax_bm.yaxis.grid(True, linestyle="--", alpha=0.5)
+    ax_bm.set_axisbelow(True)
+    fig_bm.tight_layout()
+    st.pyplot(fig_bm, use_container_width=False)
+    plt.close(fig_bm)
+
+    render_html_table(pd.DataFrame([
+        {"Architecture": "Custom CNN (I3)", "Params": "~2 M", "Strategy": "From scratch",
+         "Val Accuracy": "0.577", "Val Macro F1": "0.509",
+         "Note": "Baseline — no pretrained weights, limited capacity"},
+        {"Architecture": "ResNet50 (I7)", "Params": "~25 M", "Strategy": "Full fine-tune · flat LR 1e-4",
+         "Val Accuracy": "0.685", "Val Macro F1": "0.653",
+         "Note": "+0.144 F1 over CNN — ImageNet pretraining is decisive"},
+        {"Architecture": "ConvNeXt-Tiny (I9)", "Params": "~28 M", "Strategy": "Full unfreeze · flat LR 1e-4",
+         "Val Accuracy": "0.714", "Val Macro F1": "0.685",
+         "Note": "+0.032 F1 over ResNet — architecture upgrade matters more than tuning"},
+        {"Architecture": "ConvNeXt-Base (I12) ★", "Params": "~89 M", "Strategy": "Full unfreeze · diff. LR 5e-6/5e-5",
+         "Val Accuracy": "0.720", "Val Macro F1": "0.692",
+         "Note": "Best image model — more capacity + differential LR"},
+    ]), max_width="100%")
+
+    # ── Why ConvNeXt-Base wins ────────────────────────────────────────────────
     st.subheader("Why ConvNeXt-Base (I12) is the best image model")
     render_html_table(pd.DataFrame([
-        {"Factor": "More parameters",
+        {"Factor": "Architecture upgrade (CNN → ConvNeXt)",
+         "Detail": "ConvNeXt's 7×7 depthwise conv, inverted bottleneck, GELU, and LayerNorm give it a fundamentally richer feature space than both CNNs and ResNets at the same input resolution. Moving from ResNet to ConvNeXt-Tiny adds +0.032 macro F1 — a larger jump than any tuning change within the ResNet family."},
+        {"Factor": "More parameters (Base vs Tiny)",
          "Detail": "ConvNeXt-Base has ~89 M parameters vs ~28 M for ConvNeXt-Tiny. The extra capacity allows the model to represent finer visual distinctions between similar product categories (e.g., board games vs toy cars)."},
         {"Factor": "Differential learning rates",
-         "Detail": "I12 uses backbone LR 5e-6 and head LR 5e-5 — a ×10 ratio. The backbone updates slowly to preserve pretrained features; the head updates faster to adapt to Rakuten's 27 classes. I9 uses a flat 1e-4 throughout, which risks slightly distorting the backbone."},
+         "Detail": "I12 uses backbone LR 5e-6 and head LR 5e-5 — a ×10 ratio. The backbone updates slowly to preserve rich pretrained features; the head updates faster to adapt to Rakuten's 27 classes. I9 uses a flat 1e-4 throughout, which risks slightly distorting the backbone."},
         {"Factor": "Continued improvement through epoch 20",
          "Detail": "I12's val macro F1 rises steadily to 0.692 at epoch 20 with no sign of overfitting — suggesting the model still has room to grow and was not overfitting even at the end of training."},
         {"Factor": "Best absolute scores across all image-only models",
          "Detail": "I12 achieves macro F1 0.692 and accuracy 0.720 — the highest reported figures in the entire image-only experiment set. It becomes the image branch for multimodal fusion in chapters 6.1–6.2."},
     ]), max_width="960px")
 
+    st.subheader("Validation metrics — ConvNeXt-Base (I12)")
+    render_metric_cards({
+        "accuracy": 0.720,
+        "macro_f1": 0.692,
+        "weighted_f1": 0.718,
+        "validation_samples": 16_984,
+    })
+
     st.success(
         """
-        ConvNeXt's modernised design (7×7 depthwise conv, inverted bottleneck, GELU, LayerNorm) gives it a
-        fundamentally richer feature space than ResNet at the same input resolution.
-        - ConvNeXt-Tiny (I9) already jumps +0.032 macro F1 over the best ResNet (I7 = 0.653 → I9 = 0.685),
-          confirming that the architecture upgrade matters more than further ResNet fine-tuning.
-        - ConvNeXt-Base (I12) adds another +0.007 (0.692) by bringing more parameters and differential
-          learning rates — enough to make it the clear winner and the natural image branch for fusion.
-        - Both models train without early stopping for all 20 epochs, confirming they are not overfitting —
-          the richer pretrained representations generalise well even on ~68 k training images.
+        ConvNeXt-Base (I12) wins on every axis:
+        - **+0.183 macro F1 over the best CNN** (I3 = 0.509 → I12 = 0.692) — pretrained weights and modern architecture are both essential.
+        - **+0.039 macro F1 over the best ResNet** (I7 = 0.653 → I12 = 0.692) — the architecture upgrade alone accounts for +0.032 (ConvNeXt-Tiny), differential LR adds the rest.
+        - **+0.007 macro F1 over ConvNeXt-Tiny** (I9 = 0.685 → I12 = 0.692) — scale and training recipe refine the final result.
+        - Both ConvNeXt variants train for the full 20 epochs without overfitting — confirming that richer pretrained representations generalise well even on ~68 k training images.
         """
     )
 
-elif page == "5.4 Image Modeling Conclusion":
+    st.info("For a detailed breakdown of classification errors and Grad-CAM visualisations, see **5.4.1 Error Analysis & Grad-CAM**.")
+
+elif page == "5.5 Image Modeling Conclusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.4 Image Modeling Conclusion")
+    st.header("5.5 Image Modeling Conclusion")
     st.write(
         "This page gives a full picture of all image-only experiments in one place. "
         "The table below covers every model from the simplest scratch-trained CNN to the final "
@@ -2040,9 +2075,9 @@ elif page == "5.4 Image Modeling Conclusion":
         """
     )
 
-elif page == "5.3.2 Interpretability":
+elif page == "5.4.1 Interpretability":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.3.2 Error Analysis & Grad-CAM — ConvNeXt-Base")
+    st.header("5.4.1 Error Analysis & Grad-CAM — ConvNeXt-Base")
     st.write(
         "This page analyses where ConvNeXt-Base (I12) succeeds and fails. "
         "The confusion matrix reveals systematic misclassification patterns at the category level; "
@@ -2175,17 +2210,17 @@ elif page == "6. Multimodal":
     strat_rows = [
         {
             "Strategy": "Late Fusion (Simple Fusion)",
-            "How it works": "Weighted average of the text and image softmax outputs. Only the mixing weight α is tuned on the validation set — no gradient update.",
+            "How it works": "CamemBERT and ConvNeXt-Base softmax outputs are blended with a single mixing weight α tuned on the validation set — no training required.",
             "Best Macro F1": f"{mm_late_meta['best_macro_f1']:.4f}" if mm_late_meta.get("best_macro_f1") else "—",
         },
         {
             "Strategy": "Intermediate Fusion",
-            "How it works": "Multiple Combinations of CLIP Base Model, CLIP Vision and CamemBERT Frozen, UnFrozen , with Augmentation and without Augmentation.",
+            "How it works": "CamemBERT and ConvNeXt-Base feature vectors are concatenated and a joint classifier is trained on top of the frozen branches.",
             "Best Macro F1": f"{mm_inter_meta['best_macro_f1']:.4f}" if mm_inter_meta.get("best_macro_f1") else "—",
         },
         {
             "Strategy": "CLIP Gate Fusion",
-            "How it works": "Frozen text and image branches feed into a trained projection head and classifier. The fusion layer learns to combine the two feature streams.",
+            "How it works": "CamemBERT (text) and CLIP Vision (image) embeddings pass through a sigmoid gate that learns per-feature mixing weights end-to-end.",
             "Best Macro F1": f"{mm_inter_meta['best_macro_f1']:.4f}" if mm_inter_meta.get("best_macro_f1") else "—",
         },
     ]
@@ -2937,8 +2972,7 @@ elif page == "2.2 Image":
         st.write(
             """
             - images are of good quality
-            - all images follow a consistent format and size.
-            - certain categories are visually similar
+            - all images follow a consistent format and size.            
             """
         )
 
@@ -3070,32 +3104,6 @@ elif page == "3.1 Text Preprocessing":
             st.image(str(_img),
                      caption="Example transformation from raw product title to tokenized input.",
                      width="stretch")
-
-    st.subheader("Model-specific processing")
-    st.write("Different models require different preprocessing strategies:")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(
-            """
-            **TF-IDF models**
-            use cleaned and tokenized text with sparse vectorization
-            """
-        )
-    with col2:
-        st.markdown(
-            """
-            **Embedding-based models**
-            rely on tokenized sequences
-            """
-        )
-    with col3:
-        st.markdown(
-            """
-            **CamemBERT**
-            uses its own tokenizer and subword encoding
-            (minimal manual preprocessing required)
-            """
-        )
 
     st.success("Preprocessing removes noise while preserving informative signals.")
 
@@ -3390,5 +3398,41 @@ elif page == "8. Project Conclusions":
         </div>
         """,
         unsafe_allow_html=True,
+    )
+
+elif page == "9. Final Benchmark":
+
+    st.header("9. Challenge Result")
+
+    st.write(
+        """
+        As a final validation, we submitted our predictions to the challenge platform.
+        Our final model reached the **top 5 on the public leaderboard**.
+        """
+    )
+
+    st.markdown(
+        """
+        Public leaderboard:  
+        https://challengedata.ens.fr/participants/challenges/35/ranking/public
+        """
+    )
+
+    col_T70, col_T71, col_T72 = st.columns([1, 2, 1])
+
+    with col_T71 :
+        _img = ION_IMAGE_DIR / "leaderboard_top5.png"
+        if _img.exists():
+            st.image(
+                str(_img),
+                caption="Public leaderboard result from the Rakuten challenge platform.",
+                width="stretch"
+            )
+
+    st.info(
+        """
+        Final note: reaching the top 5 is a strong outcome for the project.
+        It confirms that the workflow was effective, while leaving room for further refinement.
+        """
     )
 
