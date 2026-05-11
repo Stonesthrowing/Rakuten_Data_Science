@@ -4,6 +4,7 @@ import re
 import runpy
 from html import escape
 
+import io
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -691,7 +692,7 @@ def render_prediction_tool():
 
 def summary_table(metadata, metrics, id2label, preds):
     rows = [
-        {"Section": "Model", "Field": "Model / chapter", "Value": "5.4 Best model: ConvNeXT-Base"},
+        {"Section": "Model", "Field": "Model / chapter", "Value": "5.5 Best model: ConvNeXT-Base"},
         {"Section": "Model", "Field": "Display name", "Value": metadata.get("display_name")},
         {"Section": "Model", "Field": "Architecture", "Value": metadata.get("architecture")},
         {"Section": "Model", "Field": "Framework", "Value": metadata.get("framework")},
@@ -1162,20 +1163,20 @@ NAV_LEVELS = {
     "4.2 Best model": 1,
     "4.21 CamemBERT vs TF-IDF": 2,
     "5. Image Modeling": 0,
-    "5.1 Conclusion": 1,
-    "5.1 CNN Models": 1,
-    "5.2 ResNet Models": 1,
-    "5.3 ConvNeXt Models": 1,
-    "5.4 Best Image Model": 1,
-    "5.4.1 Interpretability": 2,
-    "5.5 Image Modeling Conclusion": 1,
+    "5.1 Data Augmentation": 1,
+    "5.2 CNN Models": 1,
+    "5.3 ResNet Models": 1,
+    "5.4 ConvNeXt Models": 1,
+    "5.5 Best Image Model": 1,
+    "5.5.1 Interpretability": 2,
+    "5.6 Image Modeling Conclusion": 1,
     "6. Multimodal": 0,
-    "6.1.1 Simple Fusion": 1,
-    "6.1.2 Intermediate Fusion": 1,
-    "6.1.3 Gated Fusion": 1,
-    "6.2 CLIP Models": 1,
-    "6.3 Best model — Summary": 1,
-    "6.4 Multimodal Conclusion": 1,
+    "6.1 Simple Fusion": 1,
+    "6.2 Intermediate Fusion": 1,
+    "6.3 Gated Fusion": 1,
+    "6.4 CLIP Models": 1,
+    "6.5 Best model — Summary": 1,
+    "6.6 Multimodal Conclusion": 1,
     "7. Prediction Tool": 0,
     "8. Project Conclusions": 0,
     "9. Final Benchmark": 0,
@@ -1195,20 +1196,20 @@ NAV_DISPLAY = {
     "4.2 Best model": "Best model",
     "4.21 CamemBERT vs TF-IDF": "vs TF-IDF",
     "5. Image Modeling": "Image Modeling",
-    "5.1 CNN Models": "CNN Models",
-    "5.1 Conclusion": "Data Augmentation",
-    "5.2 ResNet Models": "ResNet Models",
-    "5.3 ConvNeXt Models": "ConvNeXt Models",
-    "5.4 Best Image Model": "Best Image Model",
-    "5.4.1 Interpretability": "Error Analysis & Grad-CAM",
-    "5.5 Image Modeling Conclusion": "Image Modeling Conclusion",
+    "5.1 Data Augmentation": "Data Augmentation",
+    "5.2 CNN Models": "CNN Models",
+    "5.3 ResNet Models": "ResNet Models",
+    "5.4 ConvNeXt Models": "ConvNeXt Models",
+    "5.5 Best Image Model": "Best Image Model",
+    "5.5.1 Interpretability": "Error Analysis & Grad-CAM",
+    "5.6 Image Modeling Conclusion": "Image Modeling Conclusion",
     "6. Multimodal": "Multimodal",
-    "6.1.1 Simple Fusion": "Simple Fusion",
-    "6.1.2 Intermediate Fusion": "Intermediate Fusion",
-    "6.1.3 Gated Fusion": "Gated Fusion",
-    "6.2 CLIP Models": "CLIP Models",
-    "6.3 Best model — Summary": "Best model — Summary",
-    "6.4 Multimodal Conclusion": "Multimodal Conclusion",
+    "6.1 Simple Fusion": "Simple Fusion",
+    "6.2 Intermediate Fusion": "Intermediate Fusion",
+    "6.3 Gated Fusion": "Gated Fusion",
+    "6.4 CLIP Models": "CLIP Models",
+    "6.5 Best model — Summary": "Best model — Summary",
+    "6.6 Multimodal Conclusion": "Multimodal Conclusion",
     "7. Prediction Tool": "Prediction Tool",
     "8. Project Conclusions": "Project Conclusions",
     "9. Final Benchmark": "Final Benchmark",
@@ -1439,7 +1440,7 @@ elif page == "1.1 Workflow":
             """
             **3. Multimodal models**
             - Combine text and image information
-            - Compare early and late fusion
+            - Compare intermediate and late fusion
             - Test CLIP-based representations
             - Focus on robust final prediction
             """
@@ -1518,9 +1519,9 @@ elif page == "5. Image Modeling":
 
 
 
-elif page == "5.1 CNN Models":
+elif page == "5.2 CNN Models":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.1 CNN Models")
+    st.header("5.2 CNN Models")
     st.write(
         "All three CNN baselines use the same custom architecture, trained on this dataset alone — "
         "no ImageNet weights, no pretrained representations. The experiments vary input resolution (128 vs. 256 px) "
@@ -1565,7 +1566,7 @@ elif page == "5.1 CNN Models":
         "**Frozen ResNet50 already surpassed every CNN: macro F1 ≈ 0.554** — a backbone never fine-tuned on product images outperformed a network trained entirely on Rakuten data, confirming that transfer learning is the right direction."
     )
 
-elif page == "5.1 Conclusion":
+elif page == "5.1 Data Augmentation":
     st.title("Rakuten Multimodal Product Classification")
     st.header("5.1 Data Augmentation")
     st.write(
@@ -1608,9 +1609,9 @@ elif page == "5.1 Conclusion":
         - **Moderate augmentation is the right balance.** Random crop, horizontal flip, and mild colour jitter add just enough variation to reduce overfitting — without destroying the shape, packaging, and colour cues the model depends on for classification.
         """
     )
-elif page == "5.2 ResNet Models":
+elif page == "5.3 ResNet Models":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.2 ResNet Models")
+    st.header("5.3 ResNet Models")
     st.write(
         "ResNet50 brings residual (skip) connections to a 50-layer deep network: instead of each block "
         "having to learn the full output from scratch, it only has to learn the *residual* — the difference "
@@ -1791,9 +1792,9 @@ elif page == "5.2 ResNet Models":
         """
     )
 
-elif page == "5.3 ConvNeXt Models":
+elif page == "5.4 ConvNeXt Models":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.3 ConvNeXt Models")
+    st.header("5.4 ConvNeXt Models")
     st.write(
         "ConvNeXt is a pure convolutional network whose design was systematically modernised by borrowing "
         "ideas from Vision Transformers (Swin Transformer). The result is a network that looks like a CNN "
@@ -1869,7 +1870,9 @@ elif page == "5.3 ConvNeXt Models":
     ax_cx.yaxis.grid(True, linestyle="--", alpha=0.5)
     ax_cx.set_axisbelow(True)
     fig_cx.tight_layout()
-    st.pyplot(fig_cx, use_container_width=False)
+    _cx_col, _ = st.columns([0.65, 0.35])
+    with _cx_col:
+        st.pyplot(fig_cx, use_container_width=True)
     plt.close(fig_cx)
 
     st.subheader("Training curves — I9 & I12")
@@ -1941,9 +1944,9 @@ elif page == "5.3 ConvNeXt Models":
         "and a detailed analysis of why it wins, including Grad-CAM visualisations in **5.4.1 Error Analysis & Grad-CAM**."
     )
 
-elif page == "5.4 Best Image Model":
+elif page == "5.5 Best Image Model":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.4 Best Image Model — ConvNeXt-Base (I12)")
+    st.header("5.5 Best Image Model — ConvNeXt-Base (I12)")
     st.write(
         "Across all 13 image-only experiments — from scratch-trained CNNs to ResNets to ConvNeXt — "
         "ConvNeXt-Base (I12) achieves the highest macro F1 and accuracy. "
@@ -1988,7 +1991,10 @@ elif page == "5.4 Best Image Model":
     ax_bm.yaxis.grid(True, linestyle="--", alpha=0.5)
     ax_bm.set_axisbelow(True)
     fig_bm.tight_layout()
-    st.pyplot(fig_bm, use_container_width=False)
+    _buf_bm = io.BytesIO()
+    fig_bm.savefig(_buf_bm, format="png", dpi=150, bbox_inches="tight")
+    _buf_bm.seek(0)
+    st.image(_buf_bm, width=800)
     plt.close(fig_bm)
 
     render_html_table(pd.DataFrame([
@@ -2041,9 +2047,9 @@ elif page == "5.4 Best Image Model":
 
     st.info("For a detailed breakdown of classification errors and Grad-CAM visualisations, see **5.4.1 Error Analysis & Grad-CAM**.")
 
-elif page == "5.5 Image Modeling Conclusion":
+elif page == "5.6 Image Modeling Conclusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.5 Image Modeling Conclusion")
+    st.header("5.6 Image Modeling Conclusion")
     st.write(
         "This page gives a full picture of all image-only experiments in one place. "
         "The table below covers every model from the simplest scratch-trained CNN to the final "
@@ -2075,9 +2081,9 @@ elif page == "5.5 Image Modeling Conclusion":
         """
     )
 
-elif page == "5.4.1 Interpretability":
+elif page == "5.5.1 Interpretability":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("5.4.1 Error Analysis & Grad-CAM — ConvNeXt-Base")
+    st.header("5.5.1 Error Analysis & Grad-CAM — ConvNeXt-Base")
     st.write(
         "This page analyses where ConvNeXt-Base (I12) succeeds and fails. "
         "The confusion matrix reveals systematic misclassification patterns at the category level; "
@@ -2234,9 +2240,9 @@ elif page == "6. Multimodal":
     ]
     render_html_table(pd.DataFrame(baseline_rows), max_width="600px")
 
-elif page == "6.4 Multimodal Conclusion":
+elif page == "6.6 Multimodal Conclusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.4 Multimodal Conclusion")
+    st.header("6.6 Multimodal Conclusion")
     st.write(
         "Both fusion models share the same frozen branches. The table below places them next to the best "
         "unimodal baselines to show the gain from combining modalities."
@@ -2316,9 +2322,9 @@ elif page == "6.4 Multimodal Conclusion":
         unsafe_allow_html=True,
     )
 
-elif page == "6.1.1 Simple Fusion":
+elif page == "6.1 Simple Fusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.1 Simple Fusion — Late Fusion")
+    st.header("6.1 Simple Fusion — Late Fusion")
     st.write(
         "Late Fusion is the simplest possible multimodal strategy: the text model and image model each "
         "produce a probability distribution over the 27 product classes independently, and those "
@@ -2413,9 +2419,9 @@ elif page == "6.1.1 Simple Fusion":
         """
     )
 
-elif page == "6.1.2 Intermediate Fusion":
+elif page == "6.2 Intermediate Fusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.2 Intermediate Fusion — Learned Joint Classifier")
+    st.header("6.2 Intermediate Fusion — Learned Joint Classifier")
     st.write(
         "Intermediate Fusion goes one step further than Late Fusion: instead of blending "
         "independent probability distributions, the feature representations from both modalities "
@@ -2496,9 +2502,9 @@ elif page == "6.1.2 Intermediate Fusion":
         """
     )
 
-elif page == "6.1.3 Gated Fusion":
+elif page == "6.3 Gated Fusion":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.1.3 Gated Fusion — Learned Feature Mixing")
+    st.header("6.3 Gated Fusion — Learned Feature Mixing")
     st.write(
         "Gated Fusion combines CamemBERT (text) and CLIP Vision (image) at the feature level. "
         "Instead of blending probability distributions (Late Fusion) or concatenating features with a fixed head "
@@ -2566,9 +2572,9 @@ elif page == "6.1.3 Gated Fusion":
         "image features matter more than the fusion mechanism itself."
     )
 
-elif page == "6.2 CLIP Models":
+elif page == "6.4 CLIP Models":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.2 CLIP Models")
+    st.header("6.4 CLIP Models")
     st.markdown(
         """
 CLIP (`openai/clip-vit-base-patch32`) learns visual and textual representations in a shared embedding space.
@@ -2617,9 +2623,9 @@ The best overall result was ConvNeXt + CamemBERT late fusion, reaching 0.891 mac
         "The strongest model used CamemBERT for French text and ConvNeXt for product images."
     )
 
-elif page == "6.3 Best model — Summary":
+elif page == "6.5 Best model — Summary":
     st.title("Rakuten Multimodal Product Classification")
-    st.header("6.3 Best Multimodal Model — Simple Fusion")
+    st.header("6.5 Best Multimodal Model — Simple Fusion")
 
     alpha = mm_late_meta.get("best_alpha", "—")
     accuracy = mm_late_meta.get("accuracy")
@@ -3366,9 +3372,11 @@ elif page == "8. Project Conclusions":
 
     _conclusion_img = APP_DIR / "images" / "project_conclusion.png"
     if _conclusion_img.exists():
-        st.image(str(_conclusion_img), use_container_width=True)
+        _conc_col, _ = st.columns([0.8, 0.2])
+        with _conc_col:
+            st.image(str(_conclusion_img), use_container_width=True)
 
-    st.subheader("Key lessons")
+    st.subheader("")
     st.markdown(
         """
         <div style="max-width:960px; overflow-x:auto; margin:0.35rem 0 1.0rem 0;">
@@ -3387,22 +3395,6 @@ elif page == "8. Project Conclusions":
             <tr style="background:#e8f5e9;"><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#1b5e20; font-weight:600;">Macro F1 is essential</td><td style="border:1px solid #c8e6c9; padding:0.62rem 0.75rem; font-size:1.06rem; color:#262730;">Accuracy masks class imbalance; macro F1 reflects true performance across all 27 categories equally.</td></tr>
           </tbody>
         </table>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.subheader("Limitations")
-    st.markdown(
-        """
-        <div style="background:#fff5f5; border:1px solid #f5c6c6; border-radius:8px; padding:1rem 1.4rem;">
-        <ul style="margin:0; padding-left:1.2rem; color:#333;">
-          <li style="margin-bottom:0.45rem;"><strong>Missing descriptions (~35%).</strong> Many products have no description — the model must rely on the title alone, losing context that CamemBERT could exploit.</li>
-          <li style="margin-bottom:0.45rem;"><strong>Noisy product titles.</strong> Titles sometimes contain HTML artifacts, numeric codes, or mixed-language tokens that add noise rather than signal.</li>
-          <li style="margin-bottom:0.45rem;"><strong>Visually ambiguous categories.</strong> Classes like toys, board games, and hobby figurines share packaging shapes and colours — image models cannot reliably separate them.</li>
-          <li style="margin-bottom:0.45rem;"><strong>Limited compute for image experiments.</strong> Some architectures (EfficientNet, DINOv2) could not be fully explored due to hardware and time constraints.</li>
-          <li style="margin-bottom:0;"><strong>French-only text pretraining.</strong> CamemBERT was pretrained exclusively on French; German and occasional English tokens in descriptions are handled less reliably.</li>
-        </ul>
         </div>
         """,
         unsafe_allow_html=True,
